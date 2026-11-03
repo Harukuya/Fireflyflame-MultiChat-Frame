@@ -51,6 +51,7 @@ p.memories={scope:N(m={'episodes':[],'words':[],'facts':[],'threads':[],'haze':[
 async def main():
     api=DashboardService(p)
     x=await api.handle('GET','overview');check('overview raw shape plus ok',x['ok'] and 'her' in x and 'data' not in x)
+    check('context attribute does not enable host-specific checks',any('平台登录' in row['text'] for row in x['env']) and all('AstrBot' not in row['text'] for row in x['env']))
     x=await api.handle('GET','sessions');check('empty session view',x['ok'] and x['rows']==[])
     x=await api.handle('GET','intimacy');check('empty intimacy view',x=={'ok':True,'rows':[]})
     x=await api.handle('GET','sticker');check('empty stickers',x=={'ok':True,'library':{},'dir':''})

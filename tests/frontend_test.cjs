@@ -42,7 +42,7 @@ const context = vm.createContext({window:{AstrBotPluginPage:bridge,addEventListe
   test('总览刷新不覆盖实际路径',()=>assert.equal($('sticker-dir').textContent,'本机实际目录：SYNTHETIC_DATA/stickers'));
   test('添加说明包含数据目录和全部图片格式',()=>{for(const token of ['&lt;data_root&gt;/stickers/','中文类别','JPG','JPEG','PNG','GIF','WebP','自动识别'])assert.ok(html.includes(token),token);});
   test('无任何接口报错toast',()=>assert.equal($('toast').textContent,''));
-  test('自定义指引位于页面底部且没有私人邮箱',()=>{assert.match(html,/prompts\//);assert.match(html,/data\//);assert.doesNotMatch(html,/mailto:|noctuna|流萤|开拓者/);assert.ok(html.indexOf('feedback-title')>html.indexOf('id="events"'));});
+  test('自定义指引位于页面底部且没有私人邮箱',()=>{assert.match(html,/prompts\//);assert.match(html,/data\//);assert.doesNotMatch(html,/mailto:|流萤|开拓者/);assert.ok(html.indexOf('feedback-title')>html.indexOf('id="events"'));});
   test('动态角色名使用纯文本',()=>assert.equal($('character-heading').textContent,'<测试角色>现在'));
   overview.her.online=true; overview.her.status='在线'; overview.her.offlineAt='';
   await $('refresh').listeners.click();

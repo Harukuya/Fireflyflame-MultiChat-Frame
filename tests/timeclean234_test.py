@@ -1,6 +1,6 @@
-"""v0.2.34：输出行首内部时间标签的严格清洗（无模型、无运行数据）。
+"""输出行首内部时间标签的严格清洗（无模型、无运行数据）。
 
-python -I -B timeclean234_test.py <个人/发布插件目录或框架目录> [<复刻包目录> <临时目录>]
+python -I -B timeclean234_test.py <框架目录>
 可追加 --compare <另一源码目录> ...，逐份验证并比较共通输出。
 本脚本不创建文件；任何断言失败都以非零状态退出。
 """
@@ -32,7 +32,7 @@ def check(label, actual, expected):
 
 
 def load(root, index):
-    package = "multichat" if (root / "multichat" / "sanitize.py").is_file() else "firefly"
+    package = "multichat"
     directory = root / package
     name = f"_timeclean234_{index}"
     spec = importlib.util.spec_from_file_location(
@@ -194,7 +194,7 @@ def run(root, index):
         outputs.append(actual)
         check(prefix + label, actual, expected)
 
-    speaker = "小伴" if package == "multichat" else "流萤"
+    speaker = "小伴"
     check(prefix + "角色名前缀后清理", to_messages(speaker + "：" + TAG + "你好。"), ["你好。"])
     check(prefix + "角色名加列表前缀后清理", to_messages(speaker + "：- 1. " + TAG + "你好。"), ["你好。"])
     check(prefix + "其他人名不能越过", to_messages("别人：" + TAG + "你好。"), ["别人：" + TAG + "你好。"])

@@ -1,6 +1,6 @@
 # 向量服务用到的第三方文件
 
-只拷了算向量必需的几个文件，版本和原版（复刻包 05 节）一致：
+本目录只包含本地向量服务必需的裁剪运行文件，固定版本如下：
 
 | 包 | 版本 | 许可 | 拷了哪些 |
 |---|---|---|---|
@@ -8,8 +8,7 @@
 | onnxruntime-common | 1.31.0-dev.20260911-2a43ec07e | MIT（Microsoft） | `dist/esm/` |
 | @huggingface/tokenizers | 0.2.0 | Apache-2.0 | `dist/tokenizers.mjs`（LICENSE 在包目录里） |
 
-原版用的是 `@huggingface/transformers` 4.3.1 的分词器，它内部就是 `@huggingface/tokenizers` 0.2.0。
-来源工程曾对照原版向量验证这套运行库；本框架只保留运行文件，不包含原版预计算向量和完整资料。当前精简样例默认按字面检索，本次验收未加载真实向量模型，不把来源工程的相似度结果视为本框架样例的测试结果。
+服务直接使用 `@huggingface/tokenizers` 0.2.0，不需要安装完整的 Transformers.js。本框架只提供运行文件，不包含模型权重或预计算资料向量；当前精简样例默认按字面检索，离线验收未加载真实向量模型。
 
 公开发布副本补齐 ONNX 两个包目录内的 `LICENSE` 和 `ThirdPartyNotices.txt`，分别来自所用固定提交：
 

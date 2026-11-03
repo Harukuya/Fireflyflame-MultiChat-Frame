@@ -95,7 +95,7 @@ class CoreTests(unittest.IsolatedAsyncioTestCase):
         return GroupChat(gid, self.hub, store, memory)
 
     def assert_generic_prompt(self, text):
-        for forbidden in ("流" + "萤", "萨" + "姆", "星核" + "猎手", "匹诺" + "康尼", "辉" + "夜", "小" + "伴"):
+        for forbidden in ("流" + "萤", "萨" + "姆", "星核" + "猎手", "匹诺" + "康尼", "小" + "伴"):
             self.assertNotIn(forbidden, text)
 
     def test_custom_name_sanitize_and_literal_regex(self):

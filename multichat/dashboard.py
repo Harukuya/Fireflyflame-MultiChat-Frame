@@ -21,11 +21,7 @@ from .schedule import describe_activity, offline_after, online_since, state_at
 ACTIVITY_NAME = {"sleep": "休息", "duty": "在线", "downtime": "在线", "night": "在线", "mission": "忙碌中"}
 MOOD_NAME = {"warm": "心情轻快", "normal": "平静", "cool": "有些低落", "distant": "情绪低沉"}
 ENERGY_NAME = {"fresh": "有精神", "low": "有点乏", "tired": "累了"}
-MERGED = {"astrbot_plugin_recall_cancel": "撤回取消回复", "memes": "表情包",
-          "time_prompt": "时间观念", "astrbot_plugin_splitter": "对话分段", "astrbot_plugin_favourpro": "好感度（FavourPro）"}
-SELF_SENDING = {"astrbot_plugin_proactive_chat": "主动聊天", "astrbot_plugin_reread": "复读",
-                "astrbot_plugin_initiativedialogue_for_group": "群聊主动对话", "astrbot_plugin_heartflow": "心流",
-                "spectrecore": "SpectreCore"}
+
 
 
 def _ts(ms: int | None) -> str:
@@ -233,32 +229,7 @@ def env_check(p) -> list[dict]:
     s = p.sessions
     if not p.trailblazer:
         out.append({"level": "info", "text": "还没设置主要联系人账号 ID：这是可选项，可在框架配置中填写；其他受管私聊和群聊仍可单独添加。"})
-    if hasattr(p, "context"):
-        if not s.whitelist_on:
-            out.append({"level": "info", "text": "AstrBot 没开白名单：名单只存在插件里，增删会话只改插件这边。"})
-        try:
-            cfg = p.context.get_config()
-            ps = cfg.get("platform_settings", {}) or {}
-            wl = [str(x).strip() for x in ps.get("id_whitelist", [])]
-            bypass = ps.get("wl_ignore_admin_on_friend", False) and p.trailblazer in [str(x) for x in cfg.get("admins_id", [])]
-            if p.trailblazer and ps.get("enable_id_white_list") and wl and p.trailblazer_umo() not in wl and not bypass:
-                out.append({"level": "warn", "text": f"主要联系人 {primary_name()}（{p.trailblazer}）的当前私聊地址不在 AstrBot 白名单里，也没有管理员豁免：消息会被 AstrBot 拦下。"})
-        except (AttributeError, TypeError):
-            pass
-        try:
-            stars = {st.name: st for st in p.context.get_all_stars()}
-        except Exception:  # noqa: BLE001
-            stars = {}
-        for name, label in MERGED.items():
-            st = stars.get(name)
-            if st is not None and getattr(st, "activated", True):
-                out.append({"level": "warn", "text": f"「{label}」插件（{name}）已经合并进来了，请在 AstrBot 里停用它，不然会两边都动。"})
-        for name, label in SELF_SENDING.items():
-            st = stars.get(name)
-            if st is not None and getattr(st, "activated", True):
-                out.append({"level": "warn", "text": f"「{label}」插件（{name}）会自己往外发消息，插件拦不住；名单里的会话请在它那边排除，或者停用它。"})
-    else:
-        out.append({"level": "info", "text": "平台登录、收发权限和会话白名单由宿主适配器配置；框架会话名单不替代平台授权。"})
+    out.append({"level": "info", "text": "平台登录、收发权限和会话白名单由宿主适配器配置；框架会话名单不替代平台授权。"})
     if not p.embedder.ready:
         out.append({"level": "info", "text": "当前使用字面检索，样例资料可正常使用。语义检索是可选能力：使用内置向量适配器时再配置 Node.js 和匹配模型文件；也可由宿主提供向量服务。"})
     for qq, d in s.private.items():
