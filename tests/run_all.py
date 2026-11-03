@@ -32,7 +32,8 @@ def main():
     jobs = [(name, [sys.executable, "-I", "-B", str(TESTS / name), str(ROOT)]) for name in
             ("profile_test.py", "data_test.py", "model_port_test.py", "core_test.py", "runtime_test.py", "dashboard_api_test.py", "local_dashboard_test.py",
              "no_reply233_test.py", "no_reply_state233_test.py", "timeclean234_test.py", "privatecontext234_test.py",
-             "window235_test.py", "farewell235_test.py")]
+             "window235_test.py", "farewell235_test.py", "activity236_test.py", "activityflow236_test.py",
+             "offline_model236_test.py")]
     jobs += [(name, [node, str(TESTS / name), str(ROOT)]) for name in ("frontend_test.cjs", "bridge_test.cjs", "no_reply_dashboard_test.cjs", "local_bridge_test.cjs")]
     total, started = 0, time.monotonic()
     for name, command in jobs:

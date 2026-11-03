@@ -25,7 +25,7 @@ import random
 import re
 from contextlib import asynccontextmanager
 
-from . import farewell, offline, persona, winext
+from . import activity, farewell, offline, persona, winext
 from .caption import image_note
 from .energy import (
     PEER_DELTA, PEER_REAL_BONUS, TOO_TIRED_TO_ASK, apply_round, current_energy, energy_factor, take_energy_note, think_steps,
@@ -143,6 +143,8 @@ class Engine:
         self.prep_since = 0  # 这一批从什么时候开始准备（一直有新消息、一直重来，超过 PREP_BUDGET_MS 就先按现在的回）
         self._pending_offline_notice: dict | None = None
         self._offline_notice_task: asyncio.Task | None = None
+        self._offline_notice_request: asyncio.Task | None = None
+        self._offline_notice_ids: set[str] = set()  # 独立于正式回话目标，撤回通知不清正式留言。
 
         t = store.thought
         if t and not is_alive(t, now_ms()):
@@ -264,7 +266,7 @@ class Engine:
                 self._count("模型调用")
                 recent_memory, _ = self.memory.recent_private_context(now_ms())
                 followup_system = "\n\n".join(x for x in [
-                    farewell.followup_system(identity, relationship), recent_memory] if x)
+                    farewell.followup_system(identity, relationship, now=now_ms(), state_fn=state_at), recent_memory] if x)
                 self.req_task = asyncio.create_task(asyncio.wait_for(
                     self.llm.chat(followup_system,
                                   farewell.followup_turns(previous, selected_msgs)),
@@ -336,7 +338,7 @@ class Engine:
             self.req_task.cancel()
 
         backlog = any(m.get("undelivered") for m in self.history)
-        # ⭐ 她不在的时候，消息留作留言；可发固定状态通知，不发聊天模型请求。
+        # ⭐ 她不在的时候，消息留作留言；主要联系人可由模型写一句通知，不进入正常聊天。
         #   她刚上线、还有没看的：这条也算在补看里（补看已经在一条条发了就不算，那是新的话，补看完接着回）
         lie = bool(leaving) or not her.online or (backlog and not (self.catching_up and self.catchup_saying))
         for m in msgs:
@@ -390,8 +392,9 @@ class Engine:
             return
         self._offline_notice_task = self._spawn(self._flush_offline_notice())
 
+    @measure_async("离线应答")
     async def _flush_offline_notice(self) -> None:
-        """状态通知与正常发送串行；不进入上下文，不清留言、不算一次回话。"""
+        """离线通知与正常发送串行；主联系人用模型短应答，不清留言、不算一次回话。"""
         try:
             while not self.closed and self._pending_offline_notice and not self._busy():
                 pending, self._pending_offline_notice = self._pending_offline_notice, None
@@ -403,10 +406,40 @@ class Engine:
                         or not self.options().get("offline_reply", False)
                         or not any(m["id"] in pending["ids"] and m.get("undelivered") for m in self.history)):
                     continue
-                text = offline.text(self.options(), state_kind, trailblazer=self.peer is None)
-                if not text:
-                    continue
                 async with self._speaking():
+                    targets = [m for m in self.history if m["id"] in pending["ids"] and m.get("undelivered")]
+                    def valid():
+                        return (not self.closed and offline.segment_key(now_ms(), state_at) == key
+                                and self.options().get("offline_reply", False)
+                                and bool(targets)
+                                and all(m in self.history and m.get("undelivered") and not m.get("recalled") for m in targets))
+
+                    text = None
+                    if self.peer is None and valid():
+                        system = winext.offline_ack_prompt(now, state_kind,
+                            mood_instruction(settle(self.store.mood, now)["value"]), state_fn=state_at,
+                            cognition=self.intimacy.trailblazer_note() if self.intimacy else "")
+                        turns = [{"role": "user", "content": "\n".join(
+                            (m.get("text") or "") + image_note(m.get("attachment")) for m in targets)
+                            or "【通知触发】对方发来一条空消息；仅作离线短通知，不猜测消息内容。"}]
+                        def track_notice(task):
+                            self._offline_notice_request = task
+                            self._offline_notice_ids = {m["id"] for m in targets}
+                            self._track(task)
+
+                        try:
+                            text = await offline.short_reply(self.llm, system, turns, valid=valid,
+                                                            count=self._count, note=self._note, track=track_notice)
+                        except asyncio.CancelledError:
+                            if self._parent_cancelled():
+                                raise
+                            continue  # 目标撤回只取消短通知，不改剩余留言；后来来话继续排队。
+                        finally:
+                            self._offline_notice_request = None
+                            self._offline_notice_ids.clear()
+                    text = text or offline.text(self.options(), state_kind, trailblazer=self.peer is None)
+                    if not text or not valid():
+                        continue
                     # 实际离线时允许状态通知；在线时道别后的聊天封口规则不变。
                     try:
                         sent = await self.sender.send(text)
@@ -415,6 +448,8 @@ class Engine:
                         continue
                     if sent:
                         self.store.extra["offlineNotice"] = key
+                        if self.peer is None:
+                            self.store.extra["offlineNoticeText"] = {"text": text, "ts": now_ms(), "segment": key}
                         self.store.save_state()
                         self._count("自动回复")
                         self._note("自动回复", text)
@@ -423,6 +458,7 @@ class Engine:
         finally:
             self._offline_notice_task = None
             self._start_offline_notice()
+
 
     async def on_recall(self, qid: str) -> None:
         """他撤回了一条：本轮目标直接打断；已经稳定读过的保留同步记录，没读完的拿掉。
@@ -453,6 +489,9 @@ class Engine:
         action = "已读的保留同步记录，没读完的拿掉" if keep else "她还没回，拿掉"
         self._note("撤回", f"他撤回了「{gone[0]['text'][:20] or '［图片］'}」{f'（{len(gone)} 条）' if len(gone) > 1 else ''}，{action}")
         # 她正在回的就是这几条：这一轮直接打断（正在问模型的也掐掉），不重来、这一轮的不再补
+        if (any(m["id"] in self._offline_notice_ids for m in gone)
+                and self._offline_notice_request is not None and not self._offline_notice_request.done()):
+            self._offline_notice_request.cancel()
         if self.in_flight and any(m["id"] in self.round_ids for m in gone):
             self.recall_cut = True
             if self.req_task and not self.req_task.done():
@@ -779,12 +818,15 @@ class Engine:
         closeness = self.intimacy.cognition(self.peer["qq"], self.peer["name"]) if self.intimacy else ""
         return winext.peer_block(self.peer["name"], self.peer["qq"], closeness, self.store.her_never_replied())
 
-    def _tail(self, now: int) -> list[str]:
-        """本私聊最近记忆、当前时间，以及未整理回复的开头提醒。"""
+    def _tail(self, now: int, *, allow_schedule: bool = False, schedule_msgs=()) -> list[str]:
+        """当前时段常驻；本轮没有回想工具时，只为明确的日程问题补充资料。"""
         working = self.memory.working_set(self.history, private=True, keep_ids=self.round_ids)
         her_texts = [m["text"] for m in working if m["role"] == "her" and not m.get("system") and m["text"]]
         recent_memory, _ = self.memory.recent_private_context(now)
-        return [x for x in [recent_memory, winext.time_block(now), winext.opener_note(her_texts)] if x]
+        return [x for x in [recent_memory, winext.time_block(now),
+                           activity.current_context(now, state_fn=state_at, allow_query=allow_schedule),
+                           activity.messages_query(schedule_msgs, now, state_fn=state_at) if schedule_msgs else None,
+                           offline.notice_context(self.store, now), winext.opener_note(her_texts)] if x]
 
     async def _recall_all(self, about: str, history: list[dict]) -> str:
         """「回想」工具：你们之间的记忆和以前的事一起找"""
@@ -797,6 +839,9 @@ class Engine:
 
     def _tool_result(self, call: dict, history: list[dict], last: bool = False):
         if call["name"] == "recall":
+            schedule_result = activity.call_result(call, now_ms(), state_fn=state_at)
+            if schedule_result is not None:
+                return schedule_result
             return self._recall_all(str(call["input"].get("about") or ""), history)
         if call["name"] == "send_sticker":
             return "表情发出去了。"
@@ -911,7 +956,8 @@ class Engine:
             system = "\n\n".join(x for x in [
                 self._base("tools" if tools else "plain", energy_note=note), self._who(),
                 style_note, voice_note, memory_note, recollection, past_note, people_note, first_note,
-                streak_note, carry_note, gap, self._recent_note(said), *self._tail(now),
+                streak_note, carry_note, gap, self._recent_note(said),
+                *self._tail(now, allow_schedule=use_tools, schedule_msgs=self._pending() if not use_tools else ()),
             ] if x)
             full = f"{system}\n\n{extra}" if extra else system
             # 开口前再看一眼（和下面拼请求之间不再让出）：准备的这阵子他又说了、撤回了 → 带着现在的记录重来；她下线了 → 躺着等补发
@@ -1235,7 +1281,8 @@ class Engine:
             midpoint = int((since + min(replied_at, now)) / 2)
             carried = self.store.thought
             note = "\n\n".join(x for x in [
-                self._return_context(away_minutes, describe_activity(state_at(midpoint))) if away else None,
+                self._return_context(away_minutes, "离线期间其中一段的活动（不代表全程，也不是当前状态）：" +
+                                     describe_activity(state_at(midpoint))) if away else None,
                 winext.CATCHUP_NEW_ONLINE if away and len(away) < len(backlog) else None,
                 persona.build_carry_thought_context(carried["topic"]) if carried and carried["topic"] else None,
                 persona.build_first_contact_context() if self.store.her_never_replied() and not self.peer else None,
@@ -1248,7 +1295,7 @@ class Engine:
                              "这批留言如果已经无需回应，可以用 no_reply 自然停下，不必为了交代刚上线而另发一句。") if reply_tools else None
             system = "\n\n".join(x for x in [self._base("tools" if reply_tools else "plain"), self._who(),
                                              self.memory.facts_note(), recollection, self._recent_note(said),
-                                             past_note, *self._tail(now), note, no_reply_note] if x)
+                                             past_note, *self._tail(now, schedule_msgs=backlog), note, no_reply_note] if x)
             # 准备的这阵子（查记忆）：他又说了、撤回了 → 这次作废，马上带着现在的留言重来；她下线了就留着，上线再补（这边新加的）
             # （一直在变、重来超过 PREP_BUDGET_MS：先按现在的留言补）
             if self.recall_cut:  # 他撤回了要补的留言：这次补发打断，这几条不再补

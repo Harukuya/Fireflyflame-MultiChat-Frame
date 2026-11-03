@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from .jsutil import MIN
+import asyncio
+
+from .jsutil import HOUR, MIN
+from .llm import classify_exception, error_diagnostic
+from .sanitize import to_messages
+
+REQUEST_TIMEOUT_S = 20
 
 REST_TEXT = "对方正在休息中"
 MISSION_TEXT = "对方正在忙碌中"
@@ -39,3 +45,38 @@ def text(options: dict, state_kind: str, trailblazer: bool = False) -> str:
     field, default = ("offline_text_mission", MISSION_TEXT) if state_kind == "mission" else ("offline_text_rest", REST_TEXT)
     value = options.get(field, default)
     return str(value) if value is not None else ""
+
+
+async def short_reply(llm, system: str, turns: list[dict], *, valid, count, note, track) -> str | None:
+    """一次有截止时间的短通知请求；不带工具，取消直接向上抛，不偷偷转成固定回复。"""
+    if not valid() or llm.provider() is None:
+        return None
+    count("模型调用")
+    task = asyncio.create_task(llm.chat_with_retry(system, turns, request_valid=valid))
+    track(task)
+    try:
+        result = await asyncio.wait_for(task, REQUEST_TIMEOUT_S)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        result = classify_exception(exc)
+    if not valid():
+        return None
+    parts = to_messages(result.text) if result.ok else []
+    if parts:
+        return parts[0]
+    count("模型失败")
+    note("出错", f"离线短应答：{error_diagnostic(result)}；用固定状态通知", "warn")
+    return None
+
+
+
+def notice_context(store, now: int) -> str | None:
+    """只给仍待正式补发的近期留言承接真实通知，不把通知当作已经答过留言。"""
+    notice = store.extra.get("offlineNoticeText")
+    if not isinstance(notice, dict) or not isinstance(notice.get("ts"), (int, float)):
+        return None
+    if not 0 <= now - notice["ts"] <= 48 * HOUR or not any(m.get("undelivered") for m in store.messages):
+        return None
+    return ("【你之前的离线短应答】\n" + str(notice.get("text") or "")
+            + "\n这只是你当时的简短通知，留言里的事情还没有正式回答。")

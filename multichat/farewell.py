@@ -9,7 +9,7 @@ import re
 
 from .jsutil import HOUR, message_time, now_ms
 from .energy import apply_round
-from . import persona
+from . import activity, persona
 from .caption import image_note
 from .sanitize import to_messages
 from .winext import time_block
@@ -17,12 +17,14 @@ from .winext import time_block
 FOLLOWUP_TIMEOUT_S = 20.0
 
 
-def followup_system(identity: str, relationship: str = "", *, now: int | None = None) -> str:
+def followup_system(identity: str, relationship: str = "", *, now: int | None = None, state_fn=None) -> str:
     """最后一次收尾只用角色语气、眼前的话和本地人际认知，不检索任何资料。"""
+    now = now_ms() if now is None else now
     return "\n\n".join(s for s in [
         profile.prompt("identity") + "\n" + identity,
         persona.VOICE,
-        time_block(now_ms() if now is None else now),
+        time_block(now),
+        activity.current_context(now, state_fn=state_fn),
         "【这次和谁说话】\n" + relationship if relationship else "",
         "【道别后的最后一次回应】\n"
         "**你刚才已经道别，现在确实得下线了。这是本次聊天最后的一条回复。**\n"

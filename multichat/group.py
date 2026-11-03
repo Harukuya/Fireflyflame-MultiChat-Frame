@@ -22,7 +22,7 @@ import random
 import re
 from contextlib import asynccontextmanager
 
-from . import farewell, offline, persona, winext
+from . import activity, farewell, offline, persona, winext
 from .caption import image_note
 from .energy import (
     DELTA, PEER_DELTA, PEER_REAL_BONUS, TOO_TIRED_TO_ASK, TIRED, apply_round, current_energy, energy_band, think_steps,
@@ -417,7 +417,8 @@ class GroupChat:
                     self._capture_shared([*previous[-6:], target])
                     with measure(self.hub.events, "群回复"):
                         result = await asyncio.wait_for(
-                            self.llm.chat(farewell.followup_system(winext.GROUP_IDENTITY, relationship),
+                            self.llm.chat(farewell.followup_system(winext.GROUP_IDENTITY, relationship,
+                                                                  now=now_ms(), state_fn=state_at),
                                           farewell.followup_turns(previous, [target], group=True)),
                             timeout=farewell.FOLLOWUP_TIMEOUT_S)
                 except Exception as exc:
@@ -473,7 +474,7 @@ class GroupChat:
             if called:
                 m["left"] = True  # 留言：她上线后补看；状态应答不算正式回答。
                 self.store.save_messages()
-                if her.activity == "mission" and self.hub.trailblazer and uid == self.hub.trailblazer:
+                if self.hub.trailblazer and uid == self.hub.trailblazer:
                     await self._mission_ack(m, her, now)
                 else:
                     await self._auto_reply(uid, her, now, m["id"])
@@ -581,9 +582,8 @@ class GroupChat:
             self._note("出错", "自动回复没发出去", "warn")
 
     async def _mission_ack(self, m: dict, her, now: int, segment: str | None = None) -> None:
-        """主要联系人的特权：她出任务时主要联系人叫她，她抽空简短回一句（在任务，回来再回他）。
-        一段任务一个群只回一次；她回来补看时先回他。"""
-        if self.closed or her.online or her.activity != "mission":
+        """任务／休息时主要联系人叫她，由主模型简短应答一次；仍留待上线正式补看。"""
+        if self.closed or her.online or not self.hub.options().get("offline_reply", True):
             return
         segment = segment or offline.segment_key(now, state_at)
         if segment is None:
@@ -596,55 +596,56 @@ class GroupChat:
                 targets.append(m["id"])
             self._pending_ack = (targets, segment)
             return
-        async with self._hold("任务中应答"):
+        async with self._hold("任务中应答" if her.activity == "mission" else "休息中应答", summarize=False):
             if m not in self.msgs:
                 return  # 刚放行就撤回了也走 finally，继续查看同段的其他候选请求。
             await self._mission_ack_turn(m, her, now, segment)
+
 
     async def _mission_ack_turn(self, m: dict, her, now: int, segment: str | None = None) -> None:
         hub, x = self.hub, self.store.extra
         seg = segment or offline.segment_key(now, state_at)
         current = state_at(now_ms())
-        if current.online or current.activity != "mission" or offline.segment_key(now_ms(), state_at) != seg:
+        if current.online or offline.segment_key(now_ms(), state_at) != seg:
             return
-        if seg is None or offline.matched(x.get("missionAck"), seg):
+        if (seg is None or offline.matched(x.get("missionAck"), seg)
+                or offline.matched(x["autoReplied"].get(hub.trailblazer), seg)):
             return
-        text = None
-        if self.llm.provider() is not None:
-            ctx = self._request_context([*self._context_msgs()[-10:], m], {m["id"]})
-            system = "\n\n".join([
-                persona.build_system_prompt(self._mood_note(now), "plain", identity_line=winext.GROUP_IDENTITY),
-                winext.group_block(self.name, hub.trailblazer),
-                hub.intimacy.trailblazer_note(),
-                winext.time_block(now, group=True),
-                winext.mission_ack_context(describe_activity(her)),
-                await self._history_note(m["text"], ctx, "mission:" + m["id"], m.get("uid", "")),
-            ])
-            hub.events.count("模型调用")
-            # 任务中的一句应答确实读到了目标，但 left 仍留给上线后的正式补看。
-            self._record_read([{**x, "read": True} for x in ctx])
-            self._capture_shared(ctx)
-            with measure(hub.events, "群回复"):
-                r = await self.llm.chat_with_retry(system + "\n\n" + self._context_instruction(),
-                                                 self._turns(ctx, focus={m["id"]}, fresh={m["id"]}))
-            parts = to_messages(r.text) if r.ok else []
-            if r.ok or r.kind == "empty":
-                self._confirm_shared(ctx)
-            text = parts[0] if parts else None
-            if not r.ok and r.kind != "empty":
-                hub.events.count("模型失败")
-                self._note("出错", f"任务中应答：{error_diagnostic(r)}；用设置里的那句", "warn")
-        text = text or hub.options().get("mission_ack_text") or MISSION_ACK
-        # 任务结束或目标撤回：不再发过时的承诺，也不清掉尚待正式回答的留言。
-        def cut():
-            current = state_at(now_ms())
-            return (m not in self.msgs or current.online or current.activity != "mission"
-                    or offline.segment_key(now_ms(), state_at) != seg)
+        self._protect_context([m])  # 等模型时收件缓存可裁剪，真正撤回仍由 on_recall 移除。
+        def valid():
+            return (not self.closed and m in self.msgs and not m.get("recalled")
+                    and offline.segment_key(now_ms(), state_at) == seg
+                    and hub.options().get("offline_reply", True))
+
+        system = winext.offline_ack_prompt(now, offline.kind(current), self._mood_note(now),
+                                          group=True, state_fn=state_at, cognition=hub.intimacy.trailblazer_note())
+        # 通知只读这次叫她的话，不重新展开历史／共享池，不引入回想或图片等待。
+        turns = [{"role": "user", "content": f"{m.get('name') or '对方'}：{m.get('text') or ''}"
+                  + image_note(m.get("attachment"))}]
+        with measure(hub.events, "群回复"):
+            text = await offline.short_reply(self.llm, system, turns, valid=valid,
+                                             count=hub.events.count, note=self._note, track=self._track)
+        text = text or offline.text(hub.options(), offline.kind(current), trailblazer=True)
+        if not text or not valid():
+            return
+        cut = lambda: not valid()
         if not cut() and await self.say([text], target=m, cut=cut, offline_notice=True):
+            # 只有实际通知送出后才归档本次目标；发送等待中已撤回的不能复活。
+            if m in self.msgs and m["id"] not in self._recalled_ids and not m.get("recalled"):
+                m["read"] = True
+                self._record_read([m])
+                self._capture_shared([m])
+                self._confirm_shared([m])
+                self.store.save_messages()
             x["missionAck"] = seg
-            x["promised"] = True  # 答应了回来再回他
-            self._note("任务中", f"主要联系人叫她，她抽空回了一句：{text}")
+            x["autoReplied"][hub.trailblazer] = seg
+            if any(row.get("left") and row.get("uid") == hub.trailblazer for row in self.msgs):
+                x["promised"] = True  # 保留尚待正式补看的留言；不恢复已撤回目标的承诺。
+            else:
+                x.pop("promised", None)
+            self._note("离线应答", f"主要联系人叫她，她抽空回了一句：{text}")
         self.store.save_state()
+
 
     def _close_window(self) -> None:
         """实际下线就清掉接话窗口，任务中那句不延长也不复活旧窗口。"""
@@ -779,7 +780,7 @@ class GroupChat:
                 target = next((by_id[mid] for mid in pending[0] if mid in by_id), None) if pending else None
                 self._pending_auto = {uid: item for uid, item in self._pending_auto.items()
                                       if item[1] == key and not offline.matched(self.store.extra["autoReplied"].get(uid), key)}
-                if (target is not None and pending[1] == key and current.activity == "mission"
+                if (target is not None and pending[1] == key
                         and not offline.matched(self.store.extra.get("missionAck"), key)):
                     remaining = [mid for mid in pending[0] if mid in by_id and mid != target["id"]]
                     if remaining:
@@ -911,7 +912,8 @@ class GroupChat:
             winext.threads_block(self._threads(now)),
             bg["recollection"], bg["past"], bg["people"],
             winext.time_block(now, group=True),
-            winext.judge_block(describe_activity(state_at(now)), ENERGY_BAND_NAME[energy_band(e)], mode),
+            activity.current_context(now, state_fn=state_at),
+            winext.judge_block("", ENERGY_BAND_NAME[energy_band(e)], mode),
             self.history_archive.source_note(shown),
         ] if s)
 
@@ -950,9 +952,10 @@ class GroupChat:
         if mode == "window":
             bg = None
             e = current_energy(hub.her.energy, now)["value"]
-            system = winext.window_judge_system(self.name, describe_activity(state_at(now)), ENERGY_BAND_NAME[energy_band(e)],
+            system = winext.window_judge_system(self.name, "", ENERGY_BAND_NAME[energy_band(e)],
                                                 self._speakers_brief(pool[start:]))
             system += "\n\n" + winext.time_block(now, group=True)
+            system += "\n\n" + activity.current_context(now, state_fn=state_at)
             system += "\n当前心情：" + self._mood_note(now)
             source = self.history_archive.source_note(pool[start:])
             if source:
@@ -1227,7 +1230,10 @@ class GroupChat:
             winext.threads_block(self._threads(now)),
             await self._history_note(said, ctx, f"{mode}:{focus[-1] if focus else now}", self._round_speaker),
             style_note, voice_note, bg["recollection"], bg["past"], bg["people"], streak_note,
-            winext.opener_note(her_texts), winext.time_block(now, group=True), self._context_instruction(), extra,
+            winext.opener_note(her_texts), winext.time_block(now, group=True),
+            activity.current_context(now, state_fn=state_at, allow_query=use_tools),
+            activity.messages_query(focus_msgs, now, state_fn=state_at) if not use_tools else None,
+            self._context_instruction(), extra,
         ] if s)
         # 问模型前最后看一眼（查背景、挑样例的这阵子）：撤回了她要接的 → 打断；撤回了别的 → 拿掉；她下线了 → 叫她的记成留言
         if self.recalls != recalls0:
@@ -1434,6 +1440,9 @@ class GroupChat:
         """群里一轮回传给她的工具结果"""
         name = c["name"]
         if name == "recall":
+            schedule_result = activity.call_result(c, now_ms(), state_fn=state_at)
+            if schedule_result is not None:
+                return schedule_result
             about = str(c["input"].get("about") or "")
             result = await self.hub.recall_all(self.memory, about, self.memory_session())
             # 自动背景统一选五包；主动换关键词回想仍可查本群最多三份相关记事，不回查原话。
@@ -1692,7 +1701,8 @@ class GroupChat:
         mid = state_at(int((since + now) / 2))
         promised = bool(x.get("promised"))  # 任务中答应过主要联系人回来再回他
         self._note("补看", f"她上线看到了 {len(left)} 条留言" + ("，先回主要联系人" if promised else ""))
-        ok = await self.turn("catchup", [m["id"] for m in left], winext.group_catchup_context(describe_activity(mid), promised))
+        ok = await self.turn("catchup", [m["id"] for m in left], winext.group_catchup_context(
+            "离线期间其中一段的活动（不代表全程，也不是当前状态）：" + describe_activity(mid), promised))
         if ok is None:
             return False
         if ok:

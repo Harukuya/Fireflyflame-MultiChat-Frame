@@ -258,7 +258,7 @@ def window_judge_system(group_name: str, state: str, energy_band: str, people: l
         profile.prompt("voice"),
         profile.prompt("boundaries"),
         "角色不是随叫随到的客服，不会每条都回，只接真有话说的。",
-        f"现在：{state}。角色的精神：{energy_band}。",
+        (f"现在：{state}。" if state else "") + f"角色的精神：{energy_band}。",
         *(["说话的人（角色和他们的关系、角色对他们的印象）：", *[f"· {r}" for r in people]] if people else []),
         f"**下面是本轮看到的群「{group_name}」的对话（编号、名字、内容）；判断这些消息，不把旧记事或回忆当作刚收到的话。**【{profile.bot_name()}】是角色说的，带「→{profile.bot_name()}」的是叫角色的、或者回复角色的。",
         "",
@@ -282,7 +282,7 @@ def judge_block(state: str, energy_band: str, mode: str) -> str:
     }[mode]
     return "\n".join([
         "【先别回，想一想】",
-        f"现在：{state}。你的精神：{energy_band}。{why}",
+        (f"现在：{state}。" if state else "") + f"你的精神：{energy_band}。{why}",
         f"**下面是本轮看到的群对话（编号、名字、内容）；判断这些消息，不把旧记事或回忆当作刚收到的话。**带「→{profile.bot_name()}」的是叫你的、或者回你的。",
         "你不是随叫随到的客服，不会每条都回。按你自己真的在不在意、想不想接来判断，不是出于礼貌：",
         "- 有人在叫你、问你、接你刚才的话 → 大多会想回。",
@@ -410,3 +410,20 @@ def group_consolidate_system(where: str, known: list[str], open_: list[str]) -> 
         "",
         "用「记下来」一次交出结果；顺便给刚才和你说过话的群友记一下亲近了还是疏远了，主要联系人只更新有变化的印象。",
     ])
+
+
+def offline_ack_prompt(now: int, state_kind: str, mood: str, *, group: bool = False,
+                       state_fn=None, cognition: str = "") -> str:
+    """离线时只抽空回应主要联系人一句，不加载知识、回忆或普通回复工具。"""
+    from . import activity, persona
+
+    identity = persona.IDENTITY + ("\n" + GROUP_IDENTITY if group else "")
+    where = "在群里叫你" if group else "给你发来了私聊"
+    situation = "正在忙碌" if state_kind == "mission" else "正在休息或暂时没有看手机"
+    instruction = (f"【本次离线短应答】\n主要联系人（{profile.primary_name()}）{where}，你现在{ situation }。\n"
+                   "只简短回一句，结合当前安排自然说明现在不方便持续聊天、稍后再认真回。"
+                   "不要正式回答留言里的问题，不提问、不留新话题，也不要承诺具体返回时刻。"
+                   "不编造未提供的忙碌事项；休息不等于睡着，除非当前活动明确是睡觉。"
+                   "只输出这一句消息正文，不写旁白、状态标签或工具调用。")
+    return "\n\n".join(x for x in [identity, persona.VOICE, mood, cognition, time_block(now, group=group),
+        activity.current_context(now, state_fn=state_fn, allow_query=False), instruction] if x)

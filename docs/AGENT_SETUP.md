@@ -105,6 +105,10 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 ## 哪些文件需要填
 
+作息提示只常驻当前时段。`recall` 可用 `source="schedule"`、`day`（today／yesterday／before_yesterday／future）、`period`（上午／HH:mm／刚刚等）按需查安排；它不查知识库或聊天记忆。day 相对当前回复，旧消息的相对日要先按发言日换算。角色不另设日期，原消息日期照常保留。无工具的明确直问由程序按原来话时间补资料；复杂问法可能未匹配。
+
+主要联系人在忙碌／休息时的私聊及群内呼叫，会用该会话主模型短应答一次，最多等 20 秒；现有固定通知文字作为失败兜底。不开持续窗口、不正式清留言、不执行回想；其他联系人仍固定通知。无需新增配置字段，也不要把这条短通知当作留言已经正式回答。
+
 | 文件 | 要填什么 | 不要放什么 |
 | --- | --- | --- |
 | `prompts/identity.md` | 身份、相处定位；可使用 `{character_name}`、`{primary_user_name}` | 未获用户设定支持的共同经历 |

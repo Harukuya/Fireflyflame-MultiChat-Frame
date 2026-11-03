@@ -67,10 +67,16 @@ RECALL = {
         "其中明确留下的、你自己说过的原话，适合当前对象和语境时可以直接使用。没有记下的细节就说记不清，不要把概述编成原句。",
         "要回想就先回想，拿到结果再开口。想起来的事又让你想到别的，可以接着回想。",
         "他聊到的事，你觉得和以前的哪件事有关、但一时想不起细节时，也可以回想。",
+        "问到你今天其他时段或昨天做什么，用 source=schedule 查日程，day 指定哪一天，period 可指定时段；这与聊天记忆、背景知识分开，未提供的具体经历不能补编。",
     ]),
     "input_schema": {
         "type": "object",
-        "properties": {"about": {"type": "string", "description": "想回想什么，几个字"}},
+        "properties": {
+            "about": {"type": "string", "description": "想回想什么，几个字"},
+            "source": {"type": "string", "enum": ["memory", "schedule"], "description": "默认 memory 查聊天记忆及背景；schedule 只查你自己的近期日程，不搜索背景知识。"},
+            "day": {"type": "string", "enum": ["today", "yesterday", "before_yesterday", "future"], "description": "schedule 专用，均相对于当前回复时刻：今天／昨天／前天及更早／明天及以后。旧消息中的今天、昨天须按它的发言日换算后再选；后两类只返回记不清或尚未告知的边界。"},
+            "period": {"type": "string", "maxLength": 40, "description": "schedule 专用：刚刚（今天往前半小时，含跨午夜）、上午、下午、晚上、HH:mm 或 HH:mm-HH:mm；省略查该日安排。时间按通讯器时钟理解。"},
+        },
         "required": ["about"],
     },
 }
