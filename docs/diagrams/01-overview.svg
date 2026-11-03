@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="890" viewBox="0 0 1280 890" role="img" aria-labelledby="title desc">
+<title id="title">独立运转的会话，连续一致的角色</title><desc id="desc">会话负责当下怎么聊；共享层连接同一个角色的状态与经历。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#708398"/></marker></defs>
+<style>text {font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;} .edge {fill:none;stroke:#708398;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow);} .soft {fill:#5e6d80;} .label {font-size:17px;fill:#506174;} </style>
+<rect width="1280" height="890" fill="#f7f9fc"/>
+<path d="M 48 109 H 1232" stroke="#dce3ed"/>
+<text x="48" y="39" font-size="14" font-weight="700" fill="#177461" letter-spacing="2">MULTICHAT / SYSTEM DESIGN · 01</text>
+<text x="48" y="82" font-size="32" font-weight="700" fill="#1d3048">独立运转的会话，连续一致的角色</text>
+<text x="48" y="139" font-size="19" fill="#5e6d80">会话负责当下怎么聊；共享层连接同一个角色的状态与经历。</text>
+<rect x="48" y="175" width="1184" height="100" rx="16" fill="#edf5ff" stroke="#8ab3e0" stroke-width="1.5"/>
+<text x="70" y="206" font-size="22" font-weight="700" fill="#205890">平台适配 → IncomingMessage → Runtime 显式注册的会话</text>
+<text x="70" y="239" font-size="18" font-weight="400" fill="#43576d">先处理身份、权限和平台事件，再进入各自会话；模型接口与发送接口分别接入。</text>
+<rect x="48" y="365" width="376" height="208" rx="16" fill="#ffffff" stroke="#d6dee8" stroke-width="1.5"/>
+<text x="70" y="396" font-size="14" font-weight="700" fill="#24364c">每个会话各管自己的这一轮</text>
+<text x="70" y="428" font-size="22" font-weight="700" fill="#24364c">私聊 A</text>
+<text x="70" y="461" font-size="18" font-weight="400" fill="#43576d">独立合并来话与请求</text>
+<text x="70" y="490" font-size="18" font-weight="400" fill="#43576d">独立留言、撤回、念头</text>
+<text x="70" y="519" font-size="18" font-weight="400" fill="#43576d">独立整理游标与持久化</text>
+<path d="M 236 275 L 236 365" class="edge"/>
+<rect x="452" y="365" width="376" height="208" rx="16" fill="#ffffff" stroke="#d6dee8" stroke-width="1.5"/>
+<text x="474" y="396" font-size="14" font-weight="700" fill="#24364c">每个会话各管自己的这一轮</text>
+<text x="474" y="428" font-size="22" font-weight="700" fill="#24364c">群聊 B</text>
+<text x="474" y="461" font-size="18" font-weight="400" fill="#43576d">被叫到／接话窗口／主动看</text>
+<text x="474" y="490" font-size="18" font-weight="400" fill="#43576d">同群任务协调，避免双重回复</text>
+<text x="474" y="519" font-size="18" font-weight="400" fill="#43576d">独立阅读、道别与记事进度</text>
+<path d="M 640 275 L 640 365" class="edge"/>
+<rect x="856" y="365" width="376" height="208" rx="16" fill="#ffffff" stroke="#d6dee8" stroke-width="1.5"/>
+<text x="878" y="396" font-size="14" font-weight="700" fill="#24364c">每个会话各管自己的这一轮</text>
+<text x="878" y="428" font-size="22" font-weight="700" fill="#24364c">群聊 C</text>
+<text x="878" y="461" font-size="18" font-weight="400" fill="#43576d">同样的机制，独立的时机</text>
+<text x="878" y="490" font-size="18" font-weight="400" fill="#43576d">慢群不占住另一个群的队列</text>
+<text x="878" y="519" font-size="18" font-weight="400" fill="#43576d">各群独立抽取主动阅读机会</text>
+<path d="M 1044 275 L 1044 365" class="edge"/>
+<text x="48" y="327" font-size="17" font-weight="600" fill="#205890">各会话独立排队</text>
+<rect x="48" y="665" width="568" height="143" rx="16" fill="#fff5e3" stroke="#dfbd77" stroke-width="1.5"/>
+<text x="70" y="696" font-size="22" font-weight="700" fill="#8b651b">同一个角色：状态与人际认知</text>
+<text x="70" y="729" font-size="18" font-weight="400" fill="#43576d">心情、精力以及对同一账号的印象共用。</text>
+<text x="70" y="758" font-size="18" font-weight="400" fill="#43576d">阅读、思考、成功发送，按各自规则结算。</text>
+<rect x="648" y="665" width="584" height="143" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
+<text x="670" y="696" font-size="22" font-weight="700" fill="#654593">带来源的记忆联系</text>
+<text x="670" y="729" font-size="18" font-weight="400" fill="#43576d">近期已读原句／临时记事／长期记忆。</text>
+<text x="670" y="758" font-size="18" font-weight="400" fill="#43576d">会话名与日期一起进入背景，不冒充新消息。</text>
+<path d="M 236 573 V 615 H 1044 V 573 M 640 573 V 615" fill="none" stroke="#708398" stroke-width="2.3" stroke-dasharray="7 7"/>
+<path d="M 332 615 L 332 665" class="edge" stroke-dasharray="7 7"/>
+<path d="M 940 615 L 940 665" class="edge" stroke-dasharray="7 7"/>
+<text x="450" y="647" font-size="17" font-weight="400" fill="#506174">共享有来源，结算有条件</text>
+<path d="M 48 827 H 1232" stroke="#dce3ed"/>
+<text x="48" y="850" font-size="17" font-weight="400" fill="#5e6d80">实线＝处理流程；虚线＝状态或记忆联系。共享可关闭；多个角色使用不同 Runtime 与数据目录。</text>
+</svg>

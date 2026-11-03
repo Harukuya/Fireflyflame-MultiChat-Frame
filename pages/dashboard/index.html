@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MultiChat 多会话框架</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <span class="glow" aria-hidden="true"></span>
+        <div>
+          <h1>MultiChat 多会话框架</h1>
+          <span class="sub">多平台宿主接口 · 这里的数字只给你看，不进聊天</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="updated" class="muted"></span>
+        <button id="reload-data" class="ghost">重新读数据</button>
+        <button id="refresh">刷新</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="grid two">
+        <div class="card" id="her-card">
+          <h2 id="character-heading">角色现在</h2>
+          <div class="status-row">
+            <span id="status-dot" class="status-icon" role="img" aria-label="状态加载中">…</span>
+            <span id="status" class="status"></span>
+            <span id="activity" class="muted"></span>
+          </div>
+          <p id="detail" class="detail"></p>
+          <dl class="kv">
+            <dt>本地时间</dt><dd id="her-hour"></dd>
+            <dt>这段在线</dt><dd id="online-span"></dd>
+            <dt>角色心情</dt><dd id="mood"></dd>
+            <dt>精力</dt><dd id="energy"></dd>
+            <dt>心里挂着</dt><dd id="thought"></dd>
+          </dl>
+          <div class="timeline-wrap">
+            <div class="timeline" id="timeline"></div>
+            <div class="timeline-scale"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+            <div class="legend" id="legend"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>模型和数据</h2>
+          <p class="muted">下方显示主要联系人私聊的模型配置，未设置主要联系人时显示默认配置。各个私聊和群聊分别用宿主给那个会话配的模型；判断模型没另选时，也跟随对应会话。</p>
+          <dl class="kv">
+            <dt>对话</dt><dd id="m-chat"></dd>
+            <dt>判断</dt><dd id="m-judge"></dd>
+            <dt>片段记事</dt><dd id="m-summary"></dd>
+            <dt>能力</dt><dd id="m-caps"></dd>
+            <dt>向量</dt><dd id="m-vec"></dd>
+            <dt>数据</dt><dd id="m-data" class="path"></dd>
+            <dt>数据版本</dt><dd id="m-version"></dd>
+          </dl>
+          <h3>今日与累计</h3>
+          <div class="stats" id="stats"></div>
+          <p class="muted stats-note" id="stats-total-note"></p>
+          <h3>环境检查</h3>
+          <ul class="env" id="env"></ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>模型用量</h2>
+          <div class="period-switch" role="group" aria-label="模型用量统计范围">
+            <button type="button" id="usage-today" class="on" aria-pressed="true">今日</button>
+            <button type="button" id="usage-total" aria-pressed="false">累计</button>
+          </div>
+        </div>
+        <p class="muted">按回复、每轮记事、长期记忆分开记录。「每轮记事」现按连续交谈片段生成，沿用原统计分类。Token 只累计接口实际返回的用量；缺报会写明，不把字符数当 Token 或费用。重试仅统计框架自己发起的重试。</p>
+        <p class="muted" id="usage-range-note"></p>
+        <div class="table-wrap"><table class="table" id="model-usage">
+          <thead><tr><th>用途</th><th>请求 / 重试</th><th>失败 / 取消</th><th>已知输入 Token</th><th>已知输出 Token</th><th>用量缺报</th><th>累计请求耗时</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+
+      <section class="card" id="tool-results-card">
+        <h2>必需工具结果</h2>
+        <p class="muted" id="tool-results-since"></p>
+        <p class="muted">只统计必须提交结果的调用，如整理记忆和群接话判断。首次缺失记录出现缺失的任务数；缺失响应统计收到非空答复却没交指定工具的次数，包含补交后仍缺少的答复。补交只在内部进行，最多一次。</p>
+        <div class="card-head tool-chart-head">
+          <h3>各模型交回结果的情况</h3>
+          <div class="period-switch" role="group" aria-label="各模型工具结果统计范围">
+            <button type="button" id="tool-model-today" aria-pressed="false">今日</button>
+            <button type="button" id="tool-model-total" class="on" aria-pressed="true">累计</button>
+          </div>
+        </div>
+        <p class="muted" id="tool-model-since"></p>
+        <div class="tool-model-legend" aria-label="图例">
+          <span><i class="result-first"></i>无需补交成功</span>
+          <span><i class="result-recovered"></i>补交成功</span>
+          <span><i class="result-failed"></i>最终失败</span>
+          <span><i class="result-cancelled"></i>取消</span>
+        </div>
+        <div class="tool-model-chart" id="tool-model-chart" aria-label="按模型比较必需工具结果"></div>
+        <p class="muted tool-chart-note">每条按该模型已结束任务的占比显示，任务数一并列出；取消单列，不算失败，也不计入成功率。无需补交成功可能经历网络重试。正在进行的任务不计入图中。</p>
+        <p class="muted">下面各项默认显示已知次数最多的原因和工具；鼠标悬停、键盘聚焦或点击可看完整分布。模型的首次缺失、缺失响应和发起补交从本版明细开始计数；历史终态总数保留，旧原因不回填。</p>
+        <h3>按用途查看详细计数</h3>
+        <div class="table-wrap"><table class="table" id="tool-results">
+          <thead><tr><th>范围 / 用途</th><th>任务</th><th>首次缺失</th><th>缺失响应</th><th>发起补交</th><th>补交成功</th><th>最终失败</th><th>取消</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <p class="muted tool-results-note">最终失败也包括网络、空回复等错误；成功只代表拿到了指定工具，具体内容仍需各功能检查。补交成功所列原因是补交前为何缺失；取消不算失败。与上方 Token 用量缺报是两件事。用途表今日按事件发生日期计数，模型明细按任务结束日期计数；跨日任务可能分属不同日期。</p>
+      </section>
+
+      <section class="card" id="unfinished-card">
+        <h2>未做完的事（重启会中止）</h2>
+        <p class="muted">进程重启、宿主重载时，下面这些做到一半的事会停掉，不会从中间继续发送。聊天记录、留言、念头、记忆、亲密度都存在数据目录里，不受影响；私聊里角色还没看到的话，重启后会接着回。维护前可等这里空了再重启。</p>
+        <ul class="env" id="unfinished"></ul>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>会话</h2>
+          <span class="muted" id="wl-note"></span>
+        </div>
+        <div class="table-wrap"><table class="table" id="sessions">
+          <thead><tr><th>会话</th><th>号码</th><th>接管</th><th>主动看</th><th>长期记忆</th><th>最近 / 阅读档案</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <p class="muted">停用或移出会话后，会停止接收新消息，并中止这个会话正在准备、请求、发送和整理的任务。已发出的消息保留；再次启用会创建新的会话实例。</p>
+        <p class="muted">每轮新看过的话和实际发出的回复，由该群主模型写成角色自己的简短记事；多看几批合成一轮，只看没回也可以记。新轮带新消息和最多五份旧记事：最近两份固定，较早三份随机，相关旧事优先替换。记事未完成时暂留有限原文；原话仍存盘供回查。长期记忆开着的群，下线后再整理全部相关记事；记事本身不打亲密度分。私聊使用未整理原话和本会话最近三条长期事件，不使用群临时记事。</p>
+        <form id="add-session" class="inline-form">
+          <select id="add-kind"><option value="group">群</option><option value="private">私聊</option></select>
+          <input id="add-id" placeholder="群聊或账号 ID" />
+          <button type="submit">加进名单</button>
+          <span class="muted" id="add-note"></span>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>表情包</h2>
+        <p class="muted">框架版不附带表情图片。在宿主指定的 <code class="path">stickers/&lt;中文类别&gt;/</code> 目录添加图片，以下方实际路径为准。Runtime 使用 <code class="path">&lt;data_root&gt;/stickers/&lt;中文类别&gt;/</code>；不同宿主可以选择自己的数据目录。</p>
+        <p class="muted">例如新建「开心」「疑问」文件夹，放入 JPG、JPEG、PNG、GIF 或 WebP 图片。文件夹名就是可选类别，放好后会自动识别，不需要改代码；点击下方按钮可刷新预览。</p>
+        <p class="muted path" id="sticker-dir"></p>
+        <p class="muted" id="sticker-count"></p>
+        <div id="stickers" class="stickers"></div>
+        <button id="load-stickers" class="ghost">刷新图片预览</button>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>记忆</h2>
+          <div class="row">
+            <select id="mem-scope"></select>
+            <button id="mem-run" class="ghost">现在整理</button>
+          </div>
+        </div>
+        <p class="muted" id="mem-note"></p>
+        <div class="tabs" id="mem-tabs">
+          <button data-tab="episodes" class="on">聊过的事</button>
+          <button data-tab="facts">关于他们的事</button>
+          <button data-tab="words">角色说过的话</button>
+          <button data-tab="threads">悬着的事</button>
+          <button data-tab="haze">底噪</button>
+        </div>
+        <div id="mem-list" class="list"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>亲密度</h2><span class="muted" id="intimacy-count"></span></div>
+        <p class="muted" id="intimacy-scroll-note">框内显示六人，向下滚动查看其余账号；表格也可左右滑动，完整印象请点「查看详情」。</p>
+        <div class="table-wrap intimacy-scroll" id="intimacy-scroll" tabindex="0" role="region" aria-label="亲密度账号列表" aria-describedby="intimacy-scroll-note"><table class="table" id="intimacy">
+          <thead><tr><th>谁</th><th>账号 ID</th><th>亲密度</th><th>档位</th><th>最近一次</th><th>在哪些群</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+
+      <section class="card">
+        <h2>最近动态</h2>
+        <div id="events" class="events"></div>
+      </section>
+
+      <footer class="card feedback" aria-labelledby="feedback-title">
+        <h2 id="feedback-title">自定义角色与资料</h2>
+        <p>此页由宿主通过 <code>window.MultiChatPage</code> 提供数据，也兼容 AstrBot 页面桥。请先阅读框架 README：在配置中填写角色名，在 <code>prompts/</code> 修改身份、口吻和边界，在 <code>data/</code> 替换知识、人物与风格样例。</p>
+        <p>修改后点击「重新读数据」应用；更改模型、会话和作息等配置后，按 README 的说明重载宿主。</p>
+      </footer>
+    </main>
+    <dialog id="intimacy-detail" class="intimacy-detail" aria-labelledby="intimacy-detail-title">
+      <div class="card-head">
+        <h2 id="intimacy-detail-title">账号详情</h2>
+        <form method="dialog"><button type="submit" class="ghost" autofocus>关闭</button></form>
+      </div>
+      <div id="intimacy-detail-body"></div>
+    </dialog>
+    <div id="tool-detail-popover" class="tool-detail-popover" role="dialog" aria-labelledby="tool-detail-title" aria-modal="false" hidden></div>
+    <div id="toast" class="toast"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

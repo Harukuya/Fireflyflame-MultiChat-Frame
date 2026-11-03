@@ -1,0 +1,23 @@
+{
+  "character_name": "小伴",
+  "dashboard": {"enabled": true, "port": 8765},
+  "primary_user_name": "主要联系人",
+  "primary_user_id": "",
+  "schedule_mode": "daily",
+  "online_start": "08:00",
+  "online_end": "23:00",
+  "busy_start": "",
+  "busy_end": "",
+  "share_recent": true,
+  "share_memory": true,
+  "decline_primary": true,
+  "offline_reply": true,
+  "offline_text_rest": "对方正在休息中",
+  "failure_notice": true,
+  "split_sentences": false,
+  "look_per_hour": 1.5,
+  "look_block_minutes": 60,
+  "look_block_max": 2,
+  "offline_text_busy": "对方正在忙碌中",
+  "busy_ack_text": "我在忙，等空下来再回你。"
+}

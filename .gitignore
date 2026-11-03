@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.bak
+*.zip
+.DS_Store
+Thumbs.db
+/model/
+/data/eval/
+# data/ 中的原创示例 JSON、Markdown 是框架的一部分，应提交到仓库。
+# embed/node_modules 是可选向量服务所用的裁剪运行库，不能忽略。
+# 真实聊天记录、配置、密钥、个人表情留在宿主应用的数据目录，勿复制进仓库。
+
+/runtime-data/
+/.runtime/
+/config.local.json
+/dist/
+/build/
+*.egg-info/

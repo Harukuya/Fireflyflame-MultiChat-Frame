@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="905" viewBox="0 0 1280 905" role="img" aria-labelledby="title desc">
+<title id="title">让每段材料保持自己的身份</title><desc id="desc">人格、风格、知识、回忆与本轮消息分区提供，避免旧背景带偏当下发言。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#708398"/></marker></defs>
+<style>text {font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;} .edge {fill:none;stroke:#708398;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow);} .soft {fill:#5e6d80;} .label {font-size:17px;fill:#506174;} </style>
+<rect width="1280" height="905" fill="#f7f9fc"/>
+<path d="M 48 109 H 1232" stroke="#dce3ed"/>
+<text x="48" y="39" font-size="14" font-weight="700" fill="#177461" letter-spacing="2">MULTICHAT / SYSTEM DESIGN · 03</text>
+<text x="48" y="82" font-size="32" font-weight="700" fill="#1d3048">让每段材料保持自己的身份</text>
+<text x="48" y="139" font-size="19" fill="#5e6d80">人格、风格、知识、回忆与本轮消息分区提供，避免旧背景带偏当下发言。</text>
+<rect x="48" y="181" width="376" height="183" rx="16" fill="#edf5ff" stroke="#8ab3e0" stroke-width="1.5"/>
+<text x="70" y="212" font-size="22" font-weight="700" fill="#205890">01 人格与说话风格</text>
+<text x="70" y="245" font-size="18" font-weight="400" fill="#43576d">角色是谁、怎样表达、认知边界</text>
+<text x="70" y="274" font-size="18" font-weight="400" fill="#43576d">明确哪些样例可参考口吻</text>
+<text x="70" y="303" font-size="18" font-weight="400" fill="#43576d">群／私聊／特殊收尾有各自规则</text>
+<rect x="452" y="181" width="376" height="183" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
+<text x="474" y="212" font-size="22" font-weight="700" fill="#654593">02 按话题取知识</text>
+<text x="474" y="245" font-size="18" font-weight="400" fill="#43576d">知识、人物、自我认知分开取</text>
+<text x="474" y="274" font-size="18" font-weight="400" fill="#43576d">资料供理解；不是刚发生的事</text>
+<text x="474" y="303" font-size="18" font-weight="400" fill="#43576d">不把全部知识库重复塞进请求</text>
+<rect x="856" y="181" width="376" height="183" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
+<text x="878" y="212" font-size="22" font-weight="700" fill="#654593">03 带来源的记忆</text>
+<text x="878" y="245" font-size="18" font-weight="400" fill="#43576d">本地长期事件、事实与悬事</text>
+<text x="878" y="274" font-size="18" font-weight="400" fill="#43576d">群临时记事、跨会话近期背景</text>
+<text x="878" y="303" font-size="18" font-weight="400" fill="#43576d">摘要不冒充逐字原话</text>
+<rect x="48" y="408" width="376" height="183" rx="16" fill="#eaf7f1" stroke="#8dc6b2" stroke-width="1.5"/>
+<text x="70" y="439" font-size="22" font-weight="700" fill="#17674f">04 本轮与已读前文</text>
+<text x="70" y="472" font-size="18" font-weight="400" fill="#43576d">私聊：未整理原话＋最近三条事件</text>
+<text x="70" y="501" font-size="18" font-weight="400" fill="#43576d">群聊：本轮焦点＋有限已读窗口</text>
+<text x="70" y="530" font-size="18" font-weight="400" fill="#43576d">谁说的、何时说的均有来源</text>
+<rect x="452" y="408" width="376" height="183" rx="16" fill="#fff5e3" stroke="#dfbd77" stroke-width="1.5"/>
+<text x="474" y="439" font-size="22" font-weight="700" fill="#8b651b">05 当前状态与情境</text>
+<text x="474" y="472" font-size="18" font-weight="400" fill="#43576d">当前日期、作息、要回应谁</text>
+<text x="474" y="501" font-size="18" font-weight="400" fill="#43576d">心情与精力只写文字感受</text>
+<text x="474" y="530" font-size="18" font-weight="400" fill="#43576d">补发、主动、念头各写本轮安排</text>
+<rect x="856" y="408" width="376" height="183" rx="16" fill="#edf5ff" stroke="#8ab3e0" stroke-width="1.5"/>
+<text x="878" y="439" font-size="22" font-weight="700" fill="#205890">06 可用工具与边界</text>
+<text x="878" y="472" font-size="18" font-weight="400" fill="#43576d">想一想、回想、说话方式等</text>
+<text x="878" y="501" font-size="18" font-weight="400" fill="#43576d">工具能力与本轮预算决定能做什么</text>
+<text x="878" y="530" font-size="18" font-weight="400" fill="#43576d">无需回复也是有效选择</text>
+<path d="M 236 591 L 236 675" class="edge"/>
+<path d="M 640 591 L 640 675" class="edge"/>
+<path d="M 1044 591 L 1044 675" class="edge"/>
+<rect x="48" y="675" width="1184" height="139" rx="16" fill="#ffffff" stroke="#d6dee8" stroke-width="1.5"/>
+<text x="70" y="706" font-size="22" font-weight="700" fill="#24364c">组装当前请求：system 背景 ＋ messages 对话 ＋ tools 协议</text>
+<text x="70" y="739" font-size="18" font-weight="400" fill="#43576d">主模型先理解材料，再回答或调用工具；工具结果回传后，在有限步数内继续。</text>
+<text x="70" y="768" font-size="18" font-weight="400" fill="#43576d">〔消息时间：…〕只提示先后，不是正文或口吻范例；合适的本人原句可以沿用。</text>
+<path d="M 48 834 H 1232" stroke="#dce3ed"/>
+<text x="48" y="857" font-size="17" font-weight="400" fill="#5e6d80">图示材料分工，不表示固定拼接顺序；各入口按需裁剪。轻量道别收尾不携带整套回想流程。</text>
+</svg>

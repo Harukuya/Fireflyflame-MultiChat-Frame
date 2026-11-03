@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1070" viewBox="0 0 1280 1070" role="img" aria-labelledby="title desc">
+<title id="title">能接着聊，也能真正停下来</title><desc id="desc">被动回复、群接话窗口和道别封口共用有效性检查，但各有入口。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#708398"/></marker></defs>
+<style>text {font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;} .edge {fill:none;stroke:#708398;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow);} .soft {fill:#5e6d80;} .label {font-size:17px;fill:#506174;} </style>
+<rect width="1280" height="1070" fill="#f7f9fc"/>
+<path d="M 48 109 H 1232" stroke="#dce3ed"/>
+<text x="48" y="39" font-size="14" font-weight="700" fill="#177461" letter-spacing="2">MULTICHAT / SYSTEM DESIGN · 02</text>
+<text x="48" y="82" font-size="32" font-weight="700" fill="#1d3048">能接着聊，也能真正停下来</text>
+<text x="48" y="139" font-size="19" fill="#5e6d80">被动回复、群接话窗口和道别封口共用有效性检查，但各有入口。</text>
+<rect x="48" y="177" width="216" height="139" rx="16" fill="#edf5ff" stroke="#8ab3e0" stroke-width="1.5"/>
+<text x="70" y="208" font-size="22" font-weight="700" fill="#205890">私聊 / 群里被叫到</text>
+<text x="70" y="241" font-size="18" font-weight="400" fill="#43576d">确定本轮目标</text>
+<text x="70" y="270" font-size="18" font-weight="400" fill="#43576d">合并连续来话</text>
+<path d="M 264 246 L 286 246" class="edge"/>
+<rect x="286" y="177" width="216" height="139" rx="16" fill="#fff5e3" stroke="#dfbd77" stroke-width="1.5"/>
+<text x="308" y="208" font-size="22" font-weight="700" fill="#8b651b">检查当前状态</text>
+<text x="308" y="241" font-size="18" font-weight="400" fill="#43576d">在线、忙闲与封口</text>
+<text x="308" y="270" font-size="18" font-weight="400" fill="#43576d">离线进入留言分支</text>
+<path d="M 502 246 L 524 246" class="edge"/>
+<rect x="524" y="177" width="216" height="139" rx="16" fill="#ffffff" stroke="#d6dee8" stroke-width="1.5"/>
+<text x="546" y="208" font-size="22" font-weight="700" fill="#24364c">准备这一轮</text>
+<text x="546" y="241" font-size="18" font-weight="400" fill="#43576d">上下文、图片、背景</text>
+<text x="546" y="270" font-size="18" font-weight="400" fill="#43576d">等完复核变化</text>
+<path d="M 740 246 L 762 246" class="edge"/>
+<rect x="762" y="177" width="216" height="139" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
+<text x="784" y="208" font-size="22" font-weight="700" fill="#654593">主模型与工具</text>
+<text x="784" y="241" font-size="18" font-weight="400" fill="#43576d">可以想一想、回想</text>
+<text x="784" y="270" font-size="18" font-weight="400" fill="#43576d">也可以选择不回复</text>
+<path d="M 978 246 L 1000 246" class="edge"/>
+<rect x="1000" y="177" width="216" height="139" rx="16" fill="#eaf7f1" stroke="#8dc6b2" stroke-width="1.5"/>
+<text x="1022" y="208" font-size="22" font-weight="700" fill="#17674f">发送前再确认</text>
+<text x="1022" y="241" font-size="18" font-weight="400" fill="#43576d">目标仍有效才发</text>
+<text x="1022" y="270" font-size="18" font-weight="400" fill="#43576d">按真实发送记账</text>
+<rect x="48" y="370" width="542" height="154" rx="16" fill="#fff5e3" stroke="#dfbd77" stroke-width="1.5"/>
+<text x="70" y="401" font-size="22" font-weight="700" fill="#8b651b">离线与中断，有明确出口</text>
+<text x="70" y="434" font-size="18" font-weight="400" fill="#43576d">任务／休息：通知与留言按作息处理，上线再补。</text>
+<text x="70" y="463" font-size="18" font-weight="400" fill="#43576d">目标未答复就撤回：这一轮停下，不重来、不补。</text>
+<text x="70" y="492" font-size="18" font-weight="400" fill="#43576d">新来的消息仍有自己的后续处理机会。</text>
+<path d="M 394 316 L 394 370" class="edge"/>
+<rect x="620" y="370" width="612" height="154" rx="16" fill="#eaf7f1" stroke="#8dc6b2" stroke-width="1.5"/>
+<text x="642" y="401" font-size="22" font-weight="700" fill="#17674f">看过、回过、发送成功不是同一件事</text>
+<text x="642" y="434" font-size="18" font-weight="400" fill="#43576d">阅读与回复分别记；第一条成功送出才算回答。</text>
+<text x="642" y="463" font-size="18" font-weight="400" fill="#43576d">无需回复／不想回复：不记已答、不扣回复精力。</text>
+<text x="642" y="492" font-size="18" font-weight="400" fill="#43576d">部分发送、失败或取消按实际结果结算。</text>
+<path d="M 1108 316 L 1108 370" class="edge"/>
+<text x="48" y="585" font-size="24" font-weight="700" fill="#24364c">群聊持续窗口</text>
+<rect x="48" y="621" width="340" height="146" rx="16" fill="#eaf7f1" stroke="#8dc6b2" stroke-width="1.5"/>
+<text x="70" y="652" font-size="22" font-weight="700" fill="#17674f">成功群回复</text>
+<text x="70" y="685" font-size="18" font-weight="400" fill="#43576d">符合条件时开启约 3～8 分钟窗口</text>
+<text x="70" y="714" font-size="18" font-weight="400" fill="#43576d">开启“主动看”、在线且未封口</text>
+<rect x="470" y="621" width="340" height="146" rx="16" fill="#edf5ff" stroke="#8ab3e0" stroke-width="1.5"/>
+<text x="492" y="652" font-size="22" font-weight="700" fill="#205890">窗口内又有普通消息</text>
+<text x="492" y="685" font-size="18" font-weight="400" fill="#43576d">合并后交判断模型掂量</text>
+<text x="492" y="714" font-size="18" font-weight="400" fill="#43576d">“被叫到”仍走直接回复入口</text>
+<rect x="892" y="621" width="340" height="146" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
+<text x="914" y="652" font-size="22" font-weight="700" fill="#654593">接，还是不接？</text>
+<text x="914" y="685" font-size="18" font-weight="400" fill="#43576d">接 → 正式回复；成功后可续窗</text>
+<text x="914" y="714" font-size="18" font-weight="400" fill="#43576d">不接 → 记一次；连续两次关窗</text>
+<text x="914" y="743" font-size="18" font-weight="400" fill="#43576d">到期／结束话题也会关窗</text>
+<path d="M 388 695 L 470 695" class="edge"/>
+<path d="M 810 695 L 892 695" class="edge"/>
+<path d="M 1062 767 L 1062 806 L 218 806 L 218 767" class="edge"/>
+<text x="520" y="798" font-size="17" font-weight="400" fill="#506174">成功回复后继续等下一轮</text>
+<rect x="48" y="853" width="1184" height="129" rx="16" fill="#fff5e3" stroke="#dfbd77" stroke-width="1.5"/>
+<text x="70" y="884" font-size="22" font-weight="700" fill="#8b651b">下线前：道别 → 每个会话最多再收尾一次 → 封口</text>
+<text x="70" y="917" font-size="18" font-weight="400" fill="#43576d">道别成功发出后关掉持续窗口；有人再来，可用主模型简短说明确实要走了。</text>
+<text x="70" y="946" font-size="18" font-weight="400" fill="#43576d">这次收尾不调用回想；用完后本段不再聊天，恢复条件由作息与道别状态控制。</text>
+<path d="M 48 1002 H 1232" stroke="#dce3ed"/>
+<text x="48" y="1025" font-size="17" font-weight="400" fill="#5e6d80">撤回细节：私聊可取消正在请求；群目标撤回后等结果返回但不发。已经答复的目标不再中断剩余发送。</text>
+</svg>

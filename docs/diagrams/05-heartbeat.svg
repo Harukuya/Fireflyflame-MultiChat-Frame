@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1040" viewBox="0 0 1280 1040" role="img" aria-labelledby="title desc">
+<title id="title">心跳找时机，模型决定意愿</title><desc id="desc">到点只代表可以掂量：是否开口仍受本轮状态、近期来话和预算约束。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#708398"/></marker></defs>
+<style>text {font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;} .edge {fill:none;stroke:#708398;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow);} .soft {fill:#5e6d80;} .label {font-size:17px;fill:#506174;} </style>
+<rect width="1280" height="1040" fill="#f7f9fc"/>
+<path d="M 48 109 H 1232" stroke="#dce3ed"/>
+<text x="48" y="39" font-size="14" font-weight="700" fill="#177461" letter-spacing="2">MULTICHAT / SYSTEM DESIGN · 05</text>
+<text x="48" y="82" font-size="32" font-weight="700" fill="#1d3048">心跳找时机，模型决定意愿</text>
+<text x="48" y="139" font-size="19" fill="#5e6d80">到点只代表可以掂量：是否开口仍受本轮状态、近期来话和预算约束。</text>
+<rect x="48" y="178" width="1184" height="104" rx="16" fill="#edf5ff" stroke="#8ab3e0" stroke-width="1.5"/>
+<text x="70" y="209" font-size="22" font-weight="700" fill="#205890">每 30 秒调度一次：按会话分派，不重复启动同一项工作</text>
+<text x="70" y="242" font-size="18" font-weight="400" fill="#43576d">心跳不是每 30 秒调用一次模型；已有会话任务会避让，其他会话可独立向前。</text>
+<rect x="48" y="371" width="368" height="365" rx="16" fill="#eaf7f1" stroke="#8dc6b2" stroke-width="1.5"/>
+<text x="70" y="402" font-size="22" font-weight="700" fill="#17674f">私聊：先回应，再主动</text>
+<text x="70" y="435" font-size="18" font-weight="400" fill="#43576d">在线、空闲且未封口时，依次检查：</text>
+<text x="70" y="464" font-size="18" font-weight="400" fill="#43576d">① 未补的留言</text>
+<text x="70" y="493" font-size="18" font-weight="400" fill="#43576d">② 尚未看完的新话</text>
+<text x="70" y="522" font-size="18" font-weight="400" fill="#43576d">③ 临近下线是否需要道别</text>
+<text x="70" y="551" font-size="18" font-weight="400" fill="#43576d">④ 到期的追问／念头</text>
+<text x="70" y="580" font-size="18" font-weight="400" fill="#43576d">⑤ 是否主动联系主要联系人</text>
+<text x="70" y="609" font-size="18" font-weight="400" fill="#43576d">有前项可处理，不同时堆出后项。</text>
+<rect x="456" y="371" width="368" height="365" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
+<text x="478" y="402" font-size="22" font-weight="700" fill="#654593">群聊：各群独立找机会</text>
+<text x="478" y="435" font-size="18" font-weight="400" fill="#43576d">主动看开着、在线、空闲且有未读</text>
+<text x="478" y="464" font-size="18" font-weight="400" fill="#43576d">按指数分布抽取本群阅读机会</text>
+<text x="478" y="493" font-size="18" font-weight="400" fill="#43576d">受时间分块上限与最短间隔限制</text>
+<text x="478" y="522" font-size="18" font-weight="400" fill="#43576d">先看一部分，可要求多看几条</text>
+<text x="478" y="551" font-size="18" font-weight="400" fill="#43576d">判断想接 → 进入正式回复</text>
+<text x="478" y="580" font-size="18" font-weight="400" fill="#43576d">不接也可留下有价值的已读记事</text>
+<text x="478" y="609" font-size="18" font-weight="400" fill="#43576d">看手机与窗口协调同一群的忙闲。</text>
+<rect x="864" y="371" width="368" height="365" rx="16" fill="#fff5e3" stroke="#dfbd77" stroke-width="1.5"/>
+<text x="886" y="402" font-size="22" font-weight="700" fill="#8b651b">维护：不挤进每一句对话</text>
+<text x="886" y="435" font-size="18" font-weight="400" fill="#43576d">群片段到期 → 后台写临时记事</text>
+<text x="886" y="464" font-size="18" font-weight="400" fill="#43576d">满足整理条件 → 筛选长期记忆</text>
+<text x="886" y="493" font-size="18" font-weight="400" fill="#43576d">按时间淡化经历、清理到期项</text>
+<text x="886" y="522" font-size="18" font-weight="400" fill="#43576d">持久化状态，记录脱敏诊断与用量</text>
+<text x="886" y="551" font-size="18" font-weight="400" fill="#43576d">后台工作与前台处理各自有边界</text>
+<text x="886" y="580" font-size="18" font-weight="400" fill="#43576d">正在停止时不再排新任务</text>
+<path d="M 232 282 L 232 371" class="edge"/>
+<path d="M 640 282 L 640 371" class="edge"/>
+<path d="M 1048 282 L 1048 371" class="edge"/>
+<rect x="48" y="818" width="1184" height="137" rx="16" fill="#ffffff" stroke="#d6dee8" stroke-width="1.5"/>
+<text x="70" y="849" font-size="22" font-weight="700" fill="#24364c">念头到期之后，仍有三种选择</text>
+<text x="70" y="882" font-size="18" font-weight="400" fill="#43576d">说出来：有效性检查后发送，实际发出才记这次主动结果。</text>
+<text x="70" y="911" font-size="18" font-weight="400" fill="#43576d">再等等：允许的一次延后；放下：结束念头。请求失败按失败记录，不冒充角色主动放下。</text>
+<path d="M 232 736 L 232 818" class="edge"/>
+<path d="M 48 981 H 1232" stroke="#dce3ed"/>
+<text x="48" y="1004" font-size="17" font-weight="400" fill="#5e6d80">新消息、撤回、下线或道别封口会使过时结果失效；机会与次数不是必须说话的配额。</text>
+</svg>
