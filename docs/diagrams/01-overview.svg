@@ -45,5 +45,5 @@
 <path d="M 940 615 L 940 665" class="edge" stroke-dasharray="7 7"/>
 <text x="450" y="647" font-size="17" font-weight="400" fill="#506174">共享有来源，结算有条件</text>
 <path d="M 48 827 H 1232" stroke="#dce3ed"/>
-<text x="48" y="850" font-size="17" font-weight="400" fill="#5e6d80">实线＝处理流程；虚线＝状态或记忆联系。共享可关闭；多个角色使用不同 Runtime 与数据目录。</text>
+<text x="48" y="850" font-size="17" font-weight="400" fill="#5e6d80">实线＝流程；虚线＝联系。跨会话记忆共享可关闭，角色状态仍共用；多角色使用独立 Runtime 与数据目录。</text>
 </svg>

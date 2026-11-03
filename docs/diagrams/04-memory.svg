@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1100" viewBox="0 0 1280 1100" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1190" viewBox="0 0 1280 1190" role="img" aria-labelledby="title desc">
 <title id="title">记得有层次，遗忘有边界</title><desc id="desc">原话工作集、临时记事、长期记忆与共享背景各司其职，不反复全量重述。</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#708398"/></marker></defs>
 <style>text {font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;} .edge {fill:none;stroke:#708398;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow);} .soft {fill:#5e6d80;} .label {font-size:17px;fill:#506174;} </style>
-<rect width="1280" height="1100" fill="#f7f9fc"/>
+<rect width="1280" height="1190" fill="#f7f9fc"/>
 <path d="M 48 109 H 1232" stroke="#dce3ed"/>
 <text x="48" y="39" font-size="14" font-weight="700" fill="#177461" letter-spacing="2">MULTICHAT / SYSTEM DESIGN · 04</text>
 <text x="48" y="82" font-size="32" font-weight="700" fill="#1d3048">记得有层次，遗忘有边界</text>
@@ -21,44 +21,49 @@
 <text x="904" y="272" font-size="18" font-weight="400" fill="#43576d">先存来源，再决定如何记住</text>
 <path d="M 398 243 L 465 243" class="edge"/>
 <path d="M 815 243 L 882 243" class="edge"/>
-<rect x="48" y="393" width="542" height="231" rx="16" fill="#edf5ff" stroke="#8ab3e0" stroke-width="1.5"/>
+<rect x="48" y="393" width="542" height="289" rx="16" fill="#edf5ff" stroke="#8ab3e0" stroke-width="1.5"/>
 <text x="70" y="424" font-size="14" font-weight="700" fill="#205890">原话与摘要交接</text>
 <text x="70" y="456" font-size="22" font-weight="700" fill="#205890">私聊：未整理原话 → 最近三条事件</text>
 <text x="70" y="489" font-size="18" font-weight="400" fill="#43576d">原话随成功整理游标退出请求，磁盘原文保留。</text>
 <text x="70" y="518" font-size="18" font-weight="400" fill="#43576d">本轮要补回的留言不会被游标误筛掉。</text>
 <text x="70" y="547" font-size="18" font-weight="400" fill="#43576d">最近写入的最多三条长期事件按交谈时间展示。</text>
 <text x="70" y="576" font-size="18" font-weight="400" fill="#43576d">不重复总结，也不因此增加回想次数。</text>
-<rect x="620" y="393" width="612" height="231" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
+<rect x="620" y="393" width="612" height="289" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
 <text x="642" y="424" font-size="14" font-weight="700" fill="#654593">成包后替代相应原话</text>
 <text x="642" y="456" font-size="22" font-weight="700" fill="#654593">群聊：连续交谈 → 角色自己口吻的临时记事</text>
 <text x="642" y="489" font-size="18" font-weight="400" fill="#43576d">新读与新说先合成片段，安静 90 秒后封口。</text>
-<text x="642" y="518" font-size="18" font-weight="400" fill="#43576d">最长 5 分钟／30 条／6000 字符，达到即分段。</text>
-<text x="642" y="547" font-size="18" font-weight="400" fill="#43576d">主模型一次写记事；无实质内容可以跳过。</text>
-<text x="642" y="576" font-size="18" font-weight="400" fill="#43576d">本轮选取最多五包；明确旧事时换入相关包。</text>
+<text x="642" y="518" font-size="18" font-weight="400" fill="#43576d">达 5 分钟／30 条／约 6000 字符也会触发封段。</text>
+<text x="642" y="547" font-size="18" font-weight="400" fill="#43576d">按消息切段；单条长消息不拆开。</text>
+<text x="642" y="576" font-size="18" font-weight="400" fill="#43576d">主模型写记事；无实质内容可以跳过。</text>
+<text x="642" y="605" font-size="18" font-weight="400" fill="#43576d">普通回复／看手机：共享池所有来源合计最多五包。</text>
+<text x="642" y="634" font-size="18" font-weight="400" fill="#43576d">接话窗口判断：只用本群最近两份完成记事。</text>
 <path d="M 640 308 L 640 350 L 319 350 L 319 393" class="edge"/>
 <path d="M 640 350 L 926 350 L 926 393" class="edge"/>
-<rect x="48" y="713" width="740" height="252" rx="16" fill="#eaf7f1" stroke="#8dc6b2" stroke-width="1.5"/>
-<text x="70" y="744" font-size="22" font-weight="700" fill="#17674f">长期整理：保留值得再次提起的内容</text>
-<text x="70" y="777" font-size="18" font-weight="400" fill="#43576d">群聊在下线／手动时整理；私聊还可在长时间安静后整理。</text>
-<text x="70" y="806" font-size="18" font-weight="400" fill="#43576d">经历：低重要性在 3／7／14 天渐淡，30 天删除。</text>
-<text x="70" y="835" font-size="18" font-weight="400" fill="#43576d">人物事实：更新／作废／容量淘汰，不按经历曲线遗忘。</text>
-<text x="70" y="864" font-size="18" font-weight="400" fill="#43576d">悬事：模型选 1～7 天；每会话最多六条。</text>
-<text x="70" y="893" font-size="18" font-weight="400" fill="#43576d">整理可不记琐事，空结果也推进整理游标。</text>
-<text x="70" y="922" font-size="18" font-weight="400" fill="#43576d">人际印象同次更新，不为打分另开请求。</text>
-<rect x="820" y="713" width="412" height="252" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
-<text x="842" y="744" font-size="22" font-weight="700" fill="#654593">近期共享池</text>
-<text x="842" y="777" font-size="18" font-weight="400" fill="#43576d">只取已读、未整理且未被包覆盖原句</text>
-<text x="842" y="806" font-size="18" font-weight="400" fill="#43576d">加上可用临时记事，带来源与日期</text>
-<text x="842" y="835" font-size="18" font-weight="400" fill="#43576d">跨会话原句总 30 条、单来源常规 10 条</text>
-<text x="842" y="864" font-size="18" font-weight="400" fill="#43576d">全局最多五包、背景总约 4000 字符</text>
-<text x="842" y="893" font-size="18" font-weight="400" fill="#43576d">长期记忆另走相关联想与回想</text>
-<path d="M 319 624 L 319 713" class="edge"/>
-<path d="M 926 624 L 926 713" class="edge" stroke-dasharray="7 7"/>
-<path d="M 720 624 L 720 713" class="edge"/>
-<path d="M 48 840 L 24 840 L 24 543 L 48 543" class="edge" stroke-dasharray="7 7"/>
-<path d="M 1232 840 L 1256 840 L 1256 543 L 1232 543" class="edge" stroke-dasharray="7 7"/>
-<path d="M 48 997 H 1232" stroke="#dce3ed"/>
-<text x="48" y="1020" font-size="17" font-weight="400" fill="#5e6d80">长期整理成功后，相应原句／记事退出近期池；失败保留。外来背景不复制成接收会话的新聊天记录。</text>
-<text x="48" y="1049" font-size="17" font-weight="400" fill="#5e6d80">日期指原发言或交谈时间，不自动等于约定发生时间。低重要性经历的 30 天期限不会因再次想起延长。</text>
-<text x="48" y="1078" font-size="17" font-weight="400" fill="#5e6d80">虚线返回窗口＝下一轮按需取用，原有整理进度不因此倒退；跨会话共享同样受展示预算限制。</text>
+<rect x="48" y="771" width="740" height="281" rx="16" fill="#eaf7f1" stroke="#8dc6b2" stroke-width="1.5"/>
+<text x="70" y="802" font-size="22" font-weight="700" fill="#17674f">长期整理：保留值得再次提起的内容</text>
+<text x="70" y="835" font-size="18" font-weight="400" fill="#43576d">群聊在下线／手动时整理。</text>
+<text x="70" y="864" font-size="18" font-weight="400" fill="#43576d">私聊还可在安静 3 小时或积累满 150 条时整理。</text>
+<text x="70" y="893" font-size="18" font-weight="400" fill="#43576d">经历：低重要性在 3／7／14 天渐淡，30 天删除。</text>
+<text x="70" y="922" font-size="18" font-weight="400" fill="#43576d">人物事实：更新／作废／容量淘汰，不按经历曲线遗忘。</text>
+<text x="70" y="951" font-size="18" font-weight="400" fill="#43576d">悬事：模型选 1～7 天；每会话最多六条。</text>
+<text x="70" y="980" font-size="18" font-weight="400" fill="#43576d">整理可不记琐事，空结果也推进整理游标。</text>
+<text x="70" y="1009" font-size="18" font-weight="400" fill="#43576d">人际印象同次更新，不为打分另开请求。</text>
+<rect x="820" y="771" width="412" height="281" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
+<text x="842" y="802" font-size="22" font-weight="700" fill="#654593">近期共享池</text>
+<text x="842" y="835" font-size="18" font-weight="400" fill="#43576d">只取已读、未整理且未被包覆盖原句</text>
+<text x="842" y="864" font-size="18" font-weight="400" fill="#43576d">加上可用临时记事，带来源与日期</text>
+<text x="842" y="893" font-size="18" font-weight="400" fill="#43576d">跨会话原句总 30 条、单来源常规 10 条</text>
+<text x="842" y="922" font-size="18" font-weight="400" fill="#43576d">临时记事合计最多五包，含本群记事</text>
+<text x="842" y="951" font-size="18" font-weight="400" fill="#43576d">共享背景合计不超过 4000 字符</text>
+<text x="842" y="980" font-size="18" font-weight="400" fill="#43576d">长期记忆另走相关联想与回想</text>
+<text x="842" y="1009" font-size="18" font-weight="400" fill="#43576d">明确旧事时优先取相关来源与记事</text>
+<path d="M 319 682 L 319 771" class="edge"/>
+<path d="M 926 682 L 926 771" class="edge" stroke-dasharray="7 7"/>
+<path d="M 720 682 L 720 771" class="edge"/>
+<path d="M 48 898 L 24 898 L 24 543 L 48 543" class="edge" stroke-dasharray="7 7"/>
+<path d="M 1232 898 L 1256 898 L 1256 543 L 1232 543" class="edge" stroke-dasharray="7 7"/>
+<path d="M 48 1084 H 1232" stroke="#dce3ed"/>
+<text x="48" y="1107" font-size="17" font-weight="400" fill="#5e6d80">长期整理成功后，相应原句／记事退出近期池；失败保留。外来背景不复制成接收会话的新聊天记录。</text>
+<text x="48" y="1136" font-size="17" font-weight="400" fill="#5e6d80">日期指原发言或交谈时间，不自动等于约定发生时间。低重要性经历的 30 天期限不会因再次想起延长。</text>
+<text x="48" y="1165" font-size="17" font-weight="400" fill="#5e6d80">虚线返回窗口＝下一轮按需取用，原有整理进度不因此倒退；跨会话共享同样受展示预算限制。</text>
 </svg>
