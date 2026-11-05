@@ -31,6 +31,7 @@ from .memory import Memory
 from .people import People
 from .ports import Conversation, IncomingMessage
 from .recent import RecentPool
+from .quotes import normalize_quote
 from .registry import Registry
 from .stickers import Stickers
 from .store import Her, Store
@@ -409,7 +410,9 @@ class Runtime:
             if conversation.kind == "private" and message.sender_id != conversation.id:
                 raise ValueError("Private conversation ID must identify its sender")
             attachments = self._attachments(message.attachments)
-            if not message.text.strip() and not attachments:
+            quote = normalize_quote(getattr(message, "quote", None))
+            called = bool(message.called or (quote and quote.get("role") == "her"))
+            if not message.text.strip() and not attachments and quote is None:
                 return False
             qid = str(message.message_id) if message.message_id is not None else None
             key = (conversation.scope, qid)
@@ -428,7 +431,10 @@ class Runtime:
                         engine = self.engine(conversation.id)
                         if engine.peer and message.sender_name:
                             engine.peer["name"] = str(message.sender_name)[:200]
-                        await engine.on_user_message(message.text, attachments, qid)
+                        if quote is not None:
+                            await engine.on_user_message(message.text, attachments, qid, quote=quote)
+                        else:
+                            await engine.on_user_message(message.text, attachments, qid)
                         store = engine.store
                     else:
                         chat = self.chat(conversation.id)
@@ -436,9 +442,10 @@ class Runtime:
                             if qid is not None and key in self._recalled:
                                 break
                             await chat.on_message(message.sender_id, str(message.sender_name)[:200] or message.sender_id,
-                                                  message.text if i == 0 else "", [attachment] if attachment else [], qid, bool(message.called))
+                                                  message.text if i == 0 else "", [attachment] if attachment else [], qid, called,
+                                                  **({"quote": quote} if i == 0 and quote is not None else {}))
                         store = chat.store
-                    if conversation.kind == "private" or message.called:
+                    if conversation.kind == "private" or called:
                         provider = self.caption_provider(conversation.scope, self.llm_for(conversation.scope))
                         for attachment in attachments:
                             self.captioner.start(provider, attachment, store.save_messages)

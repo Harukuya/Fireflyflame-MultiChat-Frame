@@ -12,7 +12,7 @@ import math
 import re
 from collections import Counter, OrderedDict
 
-from .history import RECALLED_SOURCE_NOTE, _excerpt, _query_tokens, _score, _text
+from .history import RECALLED_SOURCE_NOTE, _excerpt, _excerpt_text, _query_tokens, _score, _text
 from .jsutil import local_dt
 
 MAX_RAW = 30
@@ -173,7 +173,7 @@ class RecentPool:
             if item["role"] == "user" and item.get("uid"):
                 who += f"（账号 {_plain(item['uid'], 32)}）"
             text = _text(item)
-            body = _excerpt(text, MAX_RAW_TEXT, query)
+            body = _excerpt_text(item, MAX_RAW_TEXT, query)
             if len(text) > MAX_RAW_TEXT:
                 body += "〔原句节选〕"
             return f"〔原句｜{_when(item.get('ts'))}｜{who}〕\n{body}"

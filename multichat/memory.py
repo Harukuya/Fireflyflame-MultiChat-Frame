@@ -20,6 +20,7 @@ import numpy as np
 
 from . import persona
 from .caption import image_note
+from .quotes import render_quote
 from .events import redact
 from .embed import MODEL_ID, VECTOR_FORMAT, Embedder, pack_vec, unpack_vec
 from .jsutil import DAY, HOUR, MIN, js_trim, local_dt, message_time, strip_ps, now_ms
@@ -209,7 +210,7 @@ def _line_text(x: dict) -> str:
     note = "" if not a else image_note(a) if a.get("kind") == "image" else f"［发了一个文件：{a.get('name') or '文件'}］"
     if x.get("sticker"):
         note += f"［发了一个表情：{x['sticker']}］"
-    return f"{note}{x['text']}".replace("\n", " ")
+    return f"{render_quote(x)}{note}{x['text']}".replace("\n", " ")
 
 
 _PRONOUN = re.compile(r"^(他的|他|我的|我)")

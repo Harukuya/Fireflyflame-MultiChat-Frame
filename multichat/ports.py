@@ -24,6 +24,8 @@ class IncomingMessage:
     message_id: str | None = None
     called: bool = False
     attachments: list[dict] = field(default_factory=list)
+    # Host-verified first-level quoted message; no SDK objects, URLs or files.
+    quote: dict | None = None
 
 
 class Transport(Protocol):

@@ -27,6 +27,7 @@ from contextlib import asynccontextmanager
 
 from . import activity, farewell, offline, persona, winext
 from .caption import image_note
+from .quotes import normalize_quote, render_quote, resolve_quote
 from .energy import (
     PEER_DELTA, PEER_REAL_BONUS, TOO_TIRED_TO_ASK, apply_round, current_energy, energy_factor, take_energy_note, think_steps,
 )
@@ -262,6 +263,7 @@ class Engine:
                     m for m in [*previous[-6:], *selected_msgs]
                     if len(image_note(m.get("attachment")) + (m.get("text") or "")
                            + (f"［发了一个表情：{m['sticker']}］" if m.get("sticker") else "")) <= 600
+                    and len((normalize_quote(m.get("quote")) or {}).get("text", "")) <= 400
                 ])
                 self._count("模型调用")
                 recent_memory, _ = self.memory.recent_private_context(now_ms())
@@ -318,7 +320,8 @@ class Engine:
     #  他发来消息
     # ============================================================
 
-    async def on_user_message(self, text: str, attachments: list[dict], qid: str | None = None) -> None:
+    async def on_user_message(self, text: str, attachments: list[dict], qid: str | None = None,
+                              quote: dict | None = None) -> None:
         if self.closed:
             return
         now = now_ms()
@@ -326,6 +329,9 @@ class Engine:
         leaving = self._leaving()
         msgs = [self.store.new_msg("user", text if i == 0 else "", attachment=a, ts=now)
                 for i, a in enumerate(attachments)] or [self.store.new_msg("user", text, ts=now)]
+        quoted = resolve_quote(quote, self.history)
+        if quoted:
+            msgs[0]["quote"] = quoted  # 多图拆分仍是一条平台来话：引用只放第一条。
         for m in msgs:
             if qid:
                 m["qid"] = qid  # 一条 账号 消息带几张图会拆成几条：撤回时一起拿掉
@@ -420,7 +426,7 @@ class Engine:
                             mood_instruction(settle(self.store.mood, now)["value"]), state_fn=state_at,
                             cognition=self.intimacy.trailblazer_note() if self.intimacy else "")
                         turns = [{"role": "user", "content": "\n".join(
-                            (m.get("text") or "") + image_note(m.get("attachment")) for m in targets)
+                            render_quote(m) + (m.get("text") or "") + image_note(m.get("attachment")) for m in targets)
                             or "【通知触发】对方发来一条空消息；仅作离线短通知，不猜测消息内容。"}]
                         def track_notice(task):
                             self._offline_notice_request = task
@@ -598,6 +604,9 @@ class Engine:
     def _recent_message(m: dict) -> dict:
         """只留实际交谈内容，不能把图片路径／URL／缓存或旧共享快照嵌套进去。"""
         row = {key: copy.deepcopy(m[key]) for key in ("id", "role", "text", "ts", "uid", "name", "sticker") if key in m}
+        quote = normalize_quote(m.get("quote"))
+        if quote:
+            row["quote"] = quote
         attachment = m.get("attachment")
         if isinstance(attachment, dict):
             row["attachment"] = {key: copy.deepcopy(attachment[key]) for key in ("kind", "name", "caption") if key in attachment}
@@ -699,11 +708,13 @@ class Engine:
         """只带尚未整理的原话；日期只进请求。本轮目标不会因并行整理丢失。"""
         see_images = self.llm.supports("image")
         out = []
-        for m in self.memory.working_set(history, private=True, keep_ids=self.round_ids):
+        working = self.memory.working_set(history, private=True, keep_ids=self.round_ids)
+        visible = [m for m in working if not m.get("system")]
+        for m in working:
             if m.get("system"):
                 continue
             role = "user" if m["role"] == "user" else "assistant"
-            stamp = message_time(m.get("ts")) + " "
+            stamp = message_time(m.get("ts")) + " " + render_quote(m, visible)
             if m.get("sticker"):
                 out.append({"role": role, "content": f"{stamp}［发了一个表情：{m['sticker']}］{m['text']}"})
                 continue

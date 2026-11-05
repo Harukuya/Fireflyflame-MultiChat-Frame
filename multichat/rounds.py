@@ -21,7 +21,7 @@ import random
 import re
 import uuid
 
-from .history import _clean_message, _excerpt, _excerpt_line, _heading, _line, _query_tokens, _score, _text
+from .history import _clean_message, _excerpt, _excerpt_line, _excerpt_text, _heading, _line, _query_tokens, _score, _text
 from .jsutil import MIN, format_timestamp, now_ms
 from .llm import b64_of, image_block
 from .winext import no_reply_mark
@@ -451,9 +451,11 @@ class RoundMemory:
             if size > room:
                 if len(_heading(row)) >= room:
                     break
-                copied["text"] = _excerpt(_text(row), room - len(_heading(row)))
+                copied["text"] = _excerpt_text(row, room - len(_heading(row)))
+                copied["_display_only"] = True
                 copied.pop("attachment", None)
                 copied.pop("sticker", None)
+                copied.pop("quote", None)  # 引文已进入裁剪 text，不能再渲染一次。
             out.append(copied)
             room -= min(size, room)
             if room <= 0:

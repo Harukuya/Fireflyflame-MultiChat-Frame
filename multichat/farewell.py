@@ -11,6 +11,7 @@ from .jsutil import HOUR, message_time, now_ms
 from .energy import apply_round
 from . import activity, persona
 from .caption import image_note
+from .quotes import render_quote
 from .sanitize import to_messages
 from .winext import time_block
 
@@ -51,6 +52,7 @@ def followup_turns(previous: list[dict], selected: list[dict], *, group: bool = 
                 text += f"［发了一个表情：{m['sticker']}］"
             # 收尾不重放长文，也不把更早的未读消息混进来。
             text = text[:600] + ("…［长内容略］" if len(text) > 600 else "")
+            text = render_quote(m, limit=400) + text
             stamp = message_time(m.get("ts")) + " "
             if m["role"] == "her":
                 turns.append({"role": "assistant", "content": stamp + text})

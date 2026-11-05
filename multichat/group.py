@@ -24,6 +24,7 @@ from contextlib import asynccontextmanager
 
 from . import activity, farewell, offline, persona, winext
 from .caption import image_note
+from .quotes import normalize_quote, render_quote, resolve_quote
 from . import look_wait
 from .energy import (
     DELTA, PEER_DELTA, PEER_REAL_BONUS, TOO_TIRED_TO_ASK, TIRED, apply_round, current_energy, energy_band, think_steps,
@@ -82,7 +83,7 @@ def look_chance(dt_ms: float, per_hour: float, tired: bool) -> float:
 
 def _trivial(m: dict) -> bool:
     """只挡空消息和明显机械刷屏；简短答复、图片也可能有新意思。"""
-    if m.get("attachment"):
+    if m.get("attachment") or normalize_quote(m.get("quote")):
         return False
     t = strip_ps(_PLACEHOLDER.sub("", m.get("text") or ""))
     return not t or (len(t) >= 3 and len(set(t.lower())) == 1 and bool(_FILLER.fullmatch(t)))
@@ -414,7 +415,10 @@ class GroupChat:
                 self.store.save_messages()
                 self.hub.events.count("模型调用")
                 try:
-                    self._capture_shared([*previous[-6:], target])
+                    self._capture_shared([m for m in [*previous[-6:], target]
+                        if len(image_note(m.get("attachment")) + (m.get("text") or "")
+                               + (f"［发了一个表情：{m['sticker']}］" if m.get("sticker") else "")) <= 600
+                        and len((normalize_quote(m.get("quote")) or {}).get("text", "")) <= 400])
                     with measure(self.hub.events, "群回复"):
                         result = await asyncio.wait_for(
                             self.llm.chat(farewell.followup_system(winext.GROUP_IDENTITY, relationship,
@@ -453,7 +457,8 @@ class GroupChat:
 
     # ---------- 收消息 ----------
 
-    async def on_message(self, uid: str, name: str, text: str, attachments: list[dict], qid: str | None, called: bool) -> None:
+    async def on_message(self, uid: str, name: str, text: str, attachments: list[dict], qid: str | None, called: bool,
+                         quote: dict | None = None) -> None:
         if self.closed:
             return
         now = now_ms()
@@ -462,6 +467,14 @@ class GroupChat:
              "uid": uid, "name": name, "called": called, "read": False}
         if qid:
             m["qid"] = qid
+        quoted = normalize_quote(quote)
+        if quoted:
+            qid_ = quoted.get("qid")
+            original = next((row for row in self.msgs if qid_ and str(row.get("qid") or "") == qid_
+                             and row.get("role") in ("user", "her") and not row.get("system")), None)
+            if original is None and qid_:
+                original = self.history_archive.lookup_qid(qid_, full=True)
+            m["quote"] = resolve_quote(quoted, [original] if original is not None else ())
         self.msgs.append(m)
         if self._archive_read():  # 先存已读部分，再裁未读收件缓存；写盘失败保留原文重试。
             active_ids = {x["id"] for x in self._archive_context}
@@ -620,7 +633,7 @@ class GroupChat:
         system = winext.offline_ack_prompt(now, offline.kind(current), self._mood_note(now),
                                           group=True, state_fn=state_at, cognition=hub.intimacy.trailblazer_note())
         # 通知只读这次叫她的话，不重新展开历史／共享池，不引入回想或图片等待。
-        turns = [{"role": "user", "content": f"{m.get('name') or '对方'}：{m.get('text') or ''}"
+        turns = [{"role": "user", "content": render_quote(m) + f"{m.get('name') or '对方'}：{m.get('text') or ''}"
                   + image_note(m.get("attachment"))}]
         with measure(hub.events, "群回复"):
             text = await offline.short_reply(self.llm, system, turns, valid=valid,
@@ -1057,6 +1070,7 @@ class GroupChat:
                          "【本轮新看到的消息】" if m["id"] in (fresh or set()) else "【本群前文】")
             calling = m.get("called") and (focus is None or m["id"] in focus or m["id"] in (fresh or set()))
             head = message_time(m.get("ts")) + " " + label + f"【{m.get('name') or '某人'}】{'（叫你）' if calling else ''}："
+            head += render_quote(m, [x for x in ctx if x.get("role") in ("user", "her")])
             a = m.get("attachment")
             path = os.path.join(self.store.images, a["file"]) if a and a.get("file") else None
             if a and see and path and os.path.isfile(path) and m in ctx[-6:]:

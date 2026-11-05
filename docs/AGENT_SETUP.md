@@ -128,7 +128,9 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 - 私聊会话 ID 必须与该用户 `sender_id` 相同。不同平台先加命名空间，例如 `service:user:abc`；同一个人跨群／私聊复用稳定 ID，不能用昵称猜身份。
 - `register(..., memory=True, proactive=False)` 默认接管并开记忆，主动行为需显式开启。已有会话的开关保留，修改用 `update_session`。发布插件“默认全开”不是框架的默认策略。
-- 群聊 `called=True` 由宿主识别 @、叫词、引用后填写。普通聊天与明确呼叫不能混同，否则判断窗口会失去意义。
+- 群聊 `called=True` 由宿主识别 @、叫词等明确呼叫后填写。`IncomingMessage.quote` 可携带经宿主核验的第一层引用快照；`role="her"` 表示引用本角色，会同样视为呼叫。引用其他人不会因此触发被叫到，但在窗口／主动阅读时可见引用内容。
+- `quote` 的字段为 `qid`（原平台 ID）、`role`（`her`／`user`，未知可省略）、`uid`／`name`、`text`、`ts`（真实原话时间的毫秒值，可省略）、`missing`／`truncated`。优先由宿主提供平台附带原文；仅 ID 时允许 `missing=True`，核心只在本会话按 ID 补内容，查不到明确提示缺失。不要用接收时间充当旧话时间，也不要按昵称猜身份。
+- 引用不是新消息副本：最多保留一层、正文最多 2000 字符，不传 SDK 对象、路径、图片 URL 或嵌套引用。图片／语音等用已有描述或类型占位，不自动下载。引用的旧消息不重置已读、已答或整理进度；不会为它重新展开整个历史窗口。具体示例见[接入说明](../接入说明.md#引用消息)。
 - 撤回及时调用 `recall`；不要等模型答完。附件先由宿主限大小、验格式，再 `runtime.add_image(local_path)`；不要把入站任意路径当作本机文件。
 - 工具结果按 `tool_history` 的顺序、调用 ID 和供应商续接数据完整转交；不能把工具理由直接发送到聊天。不支持工具时明确声明文字能力，不能假装支持。
 - `send_text`／`send_image` 只在平台接受发送时返回严格 `True`。未知或失败返回 `False`；不支持图片可返回 `False`，typing 可为空操作。

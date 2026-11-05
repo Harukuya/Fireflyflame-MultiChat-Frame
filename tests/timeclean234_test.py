@@ -60,6 +60,8 @@ def check_send_cycle(root, package, name, sanitize, prefix, now):
 
     namespace = {"asyncio": SimpleNamespace(sleep=no_wait), "pace": pacing.schedule,
                  "message_time": message_time}
+    if (root / package / "quotes.py").is_file():
+        namespace["render_quote"] = importlib.import_module(name + ".quotes").render_quote
     exec(compile(ast.Module(body=methods, type_ignores=[]), str(source), "exec"), namespace)
     user = {"id": "u1", "role": "user", "text": "我发的原文含有" + TAG, "ts": now - 60000}
     original_user = copy.deepcopy(user)

@@ -15,6 +15,7 @@ import math
 import random
 
 from .caption import image_note
+from .quotes import render_quote
 from .jsutil import message_time
 from .winext import JUDGE, READ_MORE
 
@@ -27,7 +28,7 @@ def _lines(msgs: list[dict], trailblazer: str = "") -> str:
         return f"{name}·主要联系人" if trailblazer and m.get("uid") == trailblazer else name
     return "\n".join(f"#{i + 1} {message_time(m.get('ts'))} 【{who(m)}】{'→' + profile.bot_name() if m.get('called') and not m.get('read') else ''}"
                      f"（{'本群前文' if m.get('read') else '本轮新看到的消息'}）："
-                     f"{image_note(m.get('attachment')) + m['text'] or '［图片］'}"
+                     f"{render_quote(m, msgs)}{image_note(m.get('attachment')) + m['text'] or ('［未附加文字］' if m.get('quote') else '［图片］')}"
                      if m["role"] == "user" else f"#{i + 1} {message_time(m.get('ts'))} 【{profile.bot_name()}】（本群前文）：{m['text'] or '［表情］'}" for i, m in enumerate(msgs))
 
 

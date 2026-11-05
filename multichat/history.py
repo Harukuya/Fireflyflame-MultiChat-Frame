@@ -19,6 +19,7 @@ import re
 import uuid
 
 from .jsutil import format_timestamp
+from .quotes import normalize_quote, render_quote
 from .text import tokens
 
 RECENT = 30
@@ -34,6 +35,8 @@ _GENERIC_QUERY = re.compile(r"回想|想起来|记不记得|还记得|记得|原
 def _clean_message(message: dict) -> dict | None:
     if not isinstance(message, dict) or message.get("role") not in ("user", "her"):
         return None
+    if message.get("_display_only"):
+        return None  # A shortened request view cannot replace a source row or become a full-read snapshot.
     if message.get("system") or message.get("skipped"):
         return None
     if message.get("role") == "user" and message.get("read") is False:
@@ -49,6 +52,9 @@ def _clean_message(message: dict) -> dict | None:
             row.pop(key)
     if row.get("uid"):
         row["uid"] = row["uid"][:64]
+    quote = normalize_quote(message.get("quote"))
+    if quote:
+        row["quote"] = quote
     attachment = message.get("attachment")
     if isinstance(attachment, dict):
         row["attachment"] = {k: attachment[k] for k in _ATTACHMENT_KEYS if isinstance(attachment.get(k), str)}
@@ -64,7 +70,7 @@ def _text(row: dict) -> str:
         note = f"［发了一个文件：{attachment.get('name') or '文件'}］"
     if row.get("sticker"):
         note += f"［发了一个表情：{row['sticker']}］"
-    return note + row.get("text", "")
+    return render_quote(row) + note + row.get("text", "")
 
 
 def _speaker(row: dict) -> str:
@@ -116,12 +122,53 @@ def _excerpt(text: str, limit: int, query: str = "") -> str:
     return text[:half] + "\n（省略）\n" + text[-half:]
 
 
+def _excerpt_text(row: dict, limit: int, query: str = "") -> str:
+    """Trim body and quote separately: an old author's words never lose attribution."""
+    limit = max(0, int(limit))
+    quote = normalize_quote(row.get("quote"))
+    if quote is None:
+        return _excerpt(_text(row), limit, query)
+    full = _text(row)
+    if len(full) <= limit:
+        return full
+    plain = _text({key: value for key, value in row.items() if key != "quote"})
+    # The reply itself gets at least half of the available budget if it is long.
+    # A short "yes" leaves the rest for the precise source it was answering.
+    body = _excerpt(plain, min(len(plain), max(0, limit // 2)), query)
+    quote_budget = limit - len(body)
+    smallest = render_quote(row, limit=0)
+    if len(smallest) > quote_budget:
+        prefix = "〔引用旧话略；本条正文〕\n"
+        if len(prefix) <= limit:
+            return prefix + _excerpt(plain, limit - len(prefix), query)
+        return "〔引文略〕" if limit >= len("〔引文略〕") else ""
+
+    def quoted_part(size):
+        if not size or quote.get("missing"):
+            return smallest
+        excerpt = _excerpt(quote["text"], size, query)
+        display = {**quote, "text": excerpt,
+                   "truncated": bool(quote.get("truncated") or excerpt != quote["text"])}
+        return render_quote({"quote": display})
+
+    # Include actual headers, blockquote prefixes and excerpt markers in the budget.
+    left, right, selected = 0, len(quote["text"]), smallest
+    while left <= right:
+        middle = (left + right) // 2
+        candidate = quoted_part(middle)
+        if len(candidate) <= quote_budget:
+            selected, left = candidate, middle + 1
+        else:
+            right = middle - 1
+    return selected + body
+
+
 def _excerpt_line(row: dict, limit: int, query: str = "") -> str:
     # 从超长话的中间找原句时，人名/账号 仍必须在，不能跟着前文一起截掉。
     heading = _heading(row)
     if len(heading) >= limit:
         return heading[:max(0, limit)]
-    return heading + _excerpt(_text(row), max(0, limit - len(heading)), query)
+    return heading + _excerpt_text(row, max(0, limit - len(heading)), query)
 
 
 class History:
@@ -258,8 +305,13 @@ class History:
             self._save()
         return count
 
-    def lookup_qid(self, qid) -> dict | None:
+    def lookup_qid(self, qid, *, full: bool = False) -> dict | None:
         """群收件缓存裁掉以后，仍可找到那条已读消息是否真的回过。"""
+        if full:
+            for key, value in self._meta.items():
+                if qid is not None and value.get("qid") == str(qid) and key in self._rows:
+                    return copy.deepcopy({**self._rows[key], **value})
+            return None
         rows = self.lookup_qid_all(qid)
         return rows[0] if rows else None
 
