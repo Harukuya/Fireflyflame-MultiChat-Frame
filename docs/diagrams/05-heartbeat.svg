@@ -25,7 +25,7 @@
 <text x="478" y="464" font-size="18" font-weight="400" fill="#43576d">① 先补看待处理留言</text>
 <text x="478" y="493" font-size="18" font-weight="400" fill="#43576d">② 没有补看 → 检查独立道别</text>
 <text x="478" y="522" font-size="18" font-weight="400" fill="#43576d">主动看：开关开启、在线且空闲</text>
-<text x="478" y="551" font-size="18" font-weight="400" fill="#43576d">有未读 → 指数分布抽本群机会</text>
+<text x="478" y="551" font-size="18" font-weight="400" fill="#43576d">有未读 → 平滑随机等待后阅读</text>
 <text x="478" y="580" font-size="18" font-weight="400" fill="#43576d">受分块限次与最短间隔约束</text>
 <text x="478" y="609" font-size="18" font-weight="400" fill="#43576d">可多看几条；判断想接 → 正式回复</text>
 <text x="478" y="638" font-size="18" font-weight="400" fill="#43576d">不接也可留下有价值的已读记事</text>

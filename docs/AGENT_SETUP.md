@@ -92,13 +92,13 @@ uv pip install --python .venv/bin/python -r requirements.txt
 | `primary_user_name`、`primary_user_id` | `主要联系人`、空 ID | 可不设；设置才启用该身份的专属流程，不自动建立恋爱关系 |
 | `schedule_mode` | `daily` 或 `always` | 需要全天在线时选 `always` |
 | `online_start`、`online_end` | `08:00`、`23:00`，`HH:MM`，不能相同 | 每日在线区间，使用宿主进程本地时区 |
-| `busy_start`、`busy_end` | 都为空；填写时须成对且不同 | 忙碌时段；即使 `always`，忙碌段仍优先 |
+| `busy_start`、`busy_end` | 都为空；填写时须成对且不同，分钟精度 | 每日忙碌时段，可跨午夜；单段按本地钟点最长 23 小时 59 分。即使 `always`，忙碌段仍优先 |
 | `share_recent`、`share_memory` | 都为 `true` | 分别控制跨会话近期池和长期记忆；需要隔离则关闭或分开 Runtime |
 | `decline_primary` | `true` | 是否允许主动不想回复主要联系人；关闭仍可自然选择无需回复 |
 | `offline_reply` | `true` | 是否发送离线状态通知 |
 | `offline_text_rest`、`offline_text_busy`、`busy_ack_text` | 见示例 JSON | 替换休息／忙碌通知及主要联系人忙碌应答 |
 | `failure_notice`、`split_sentences` | `true`、`false` | 失败通知和私聊按句拆分；不改变角色的事实内容 |
-| `look_per_hour`、`look_block_minutes`、`look_block_max` | `1.5`、`60`、`2` | 开启主动阅读的群使用的阅读概率和分块额度 |
+| `look_per_hour`、`look_block_minutes`、`look_block_max` | `1.5`、`60`、`2` | 每群独立的平滑随机等待速率与整点分块额度；不是保证每小时阅读次数 |
 | `dashboard.enabled`、`dashboard.port` | `true`、`8765` | 默认监听 `127.0.0.1`；嵌入宿主时可关闭，测试或多实例可用端口 `0` |
 
 `judge_provider_for` 可省略，默认沿用主模型选择器；它不是 JSON 字段。`caption_provider_for` 按需提供：主模型不能看图时用于转述；未提供则没有额外视觉模型。`embedder` 同样由构造器注入，默认字面检索，不自动下载模型或请求付费向量服务。
@@ -106,6 +106,8 @@ uv pip install --python .venv/bin/python -r requirements.txt
 ## 哪些文件需要填
 
 作息提示只常驻当前时段。`recall` 可用 `source="schedule"`、`day`（today／yesterday／before_yesterday／future）、`period`（上午／HH:mm／刚刚等）按需查安排；它不查知识库或聊天记忆。day 相对当前回复，旧消息的相对日要先按发言日换算。角色不另设日期，原消息日期照常保留。无工具的明确直问由程序按原来话时间补资料；复杂问法可能未匹配。
+
+框架忙碌段是每天按钟点计算的区间，开始包含、结束不含；不是进入忙碌后再倒计时，也没有多天任务周期。跨午夜不会把结束时间顺延，重新查询或加载同一配置也不续期。起止相同会拒绝配置，不能借此设置全天连续忙碌；到结束时恢复普通作息，若仍在休息段则继续休息，不保证立即上线。
 
 主要联系人在忙碌／休息时的私聊及群内呼叫，会用该会话主模型短应答一次，最多等 20 秒；现有固定通知文字作为失败兜底。不开持续窗口、不正式清留言、不执行回想；其他联系人仍固定通知。无需新增配置字段，也不要把这条短通知当作留言已经正式回答。
 

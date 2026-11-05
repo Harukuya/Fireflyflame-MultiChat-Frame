@@ -4,7 +4,7 @@
 一个群一个 GroupChat；GroupHub 管所有群和「看手机」。
 ⭐ 什么时候说话：
   ① 被叫到（@她、回她的消息、叫她的词）：在线就等一个合并窗口再回；不在线就自动回复一次（每人每段离线一次），记成留言，上线后补看
-  ② 看手机：各群独立随机看一眼（指数分布，每群平均每小时 1.5 次；每块最多 2 次，两次至少隔 10 分钟），
+  ② 看手机：各群独立平滑随机等待（Gamma形状2，基础速率每小时1.5；每块最多2次，另至少隔10分钟），
      「主动看」开着的群各自读最近没看过的 15～30 条，判断模型决定要不要接；各群不争抢同一次机会
   ③ 接着聊：她说完话开一个 3～8 分钟的接话窗口，窗口里的新消息交给判断模型
 ⭐ 她只记得她看过的：被叫到、看手机、接话窗口里读到的，和她自己说的（read=True 的那些）。
@@ -24,6 +24,7 @@ from contextlib import asynccontextmanager
 
 from . import activity, farewell, offline, persona, winext
 from .caption import image_note
+from . import look_wait
 from .energy import (
     DELTA, PEER_DELTA, PEER_REAL_BONUS, TOO_TIRED_TO_ASK, TIRED, apply_round, current_energy, energy_band, think_steps,
 )
@@ -44,11 +45,11 @@ from .ways import ASKING_STREAK, GROUP_WAYS, asking_streak, group_way_note, note
 BATCH_MS = (5000, 15000)
 WINDOW_DEBOUNCE_MS = (6000, 10000)
 WINDOW_MIN = (3, 8)
-LOOK_PER_HOUR = 1.5     # 看手机：平均每小时几次（指数分布的速率 λ）
+LOOK_PER_HOUR = 1.5     # 归一化等待的推进速率；Gamma预算均值1，默认额外等待均值40分钟。
 LOOK_BLOCK_MIN = 60     # 分块：每块多少分钟
 LOOK_BLOCK_MAX = 2      # 每块最多看几次
 LOOK_MIN_GAP = 10 * MIN  # 两次之间至少隔这么久
-LOOK_TICK_CAP = 2 * MIN  # 一次心跳最多算这么长（刚上线、刚重启时不一下子补算很久）
+LOOK_TICK_CAP = 2 * MIN  # 连续可看的单步进度上限；重启／暂停恢复的首步不补算。
 READ_FIRST = (15, 30)
 TURN_CONTEXT = 30
 AROUND = 30         # 她要接的那条更早：前面最多 14 条、连同后文一共 30 条
@@ -75,10 +76,8 @@ def _seen(m: dict) -> bool:
 
 
 def look_chance(dt_ms: float, per_hour: float, tired: bool) -> float:
-    """这一小段时间里她拿起手机的概率：指数分布的 CDF，F(Δt) = 1 − e^(−λΔt)。
-    λ = 平均每小时几次；累了 λ 打 2/3 折（平均间隔拉长一半，和以前「累了间隔 ×1.5」一样）"""
-    lam = max(0.0, per_hour) * (2 / 3 if tired else 1) / HOUR
-    return 1 - math.exp(-lam * max(0.0, dt_ms))
+    """有效等待的 Gamma(2) CDF；实际调度只抽一次预算，不每心跳重抽。"""
+    return look_wait.chance(dt_ms, per_hour, tired)
 
 
 def _trivial(m: dict) -> bool:
@@ -122,6 +121,7 @@ class GroupChat:
         self._tick_task: asyncio.Task | None = None
         self._look_task: asyncio.Task | None = None
         self.last_tick = 0
+        self._look_active = False  # 不持久化墙钟：重启／暂停后的首 tick 不补算过去时间。
         self.force_look = False
         self._memory_task: asyncio.Task | None = None
         self._history_task: asyncio.Task | None = None
@@ -1550,17 +1550,21 @@ class GroupChat:
                 and (self.batch_task is None or self.batch_task.done())
                 and any(m["role"] == "user" and not m.get("read") and not _trivial(m) for m in self.msgs))
 
+    def _pause_look(self, now: int) -> None:
+        self.last_tick = now
+        self._look_active = False
+
     def schedule_look(self, now: int, proactive_on) -> None:
         if not self._look_ready(proactive_on) or (self._look_task is not None and not self._look_task.done()):
-            self.last_tick = now  # 停用、忙碌或空群不积攒随机概率，也不扣次数。
+            self._pause_look(now)  # 停用、忙碌或空群冻结预算，也不扣次数。
             return
         if self._look_due(now, current_energy(self.hub.her.energy, now)["value"]):
             self._look_task = self.spawn(self.look(proactive_on))
 
     def _look_due(self, now: int, energy: float) -> bool:
-        """每群独立抽签、分块限次和最小间隔；设置是所有群使用的同一套默认值。"""
-        dt = min(now - self.last_tick, LOOK_TICK_CAP) if self.last_tick else 0
-        self.last_tick = now
+        """每群抽一次平滑预算，可看时才推进；整点和重启均不重新抽。"""
+        previous, active = self.last_tick, self._look_active
+        self._pause_look(now)
         if energy < TOO_TIRED_TO_ASK:
             return False
         if self.force_look:
@@ -1568,17 +1572,32 @@ class GroupChat:
             return True
         opts, look = self.hub.options(), self.store.extra["look"]
         block_ms = max(1, int(opts.get("look_block_minutes", LOOK_BLOCK_MIN))) * MIN
-        if look.get("block") == now // block_ms and look.get("count", 0) >= int(opts.get("look_block_max", LOOK_BLOCK_MAX)):
+        limit = int(opts.get("look_block_max", LOOK_BLOCK_MAX))
+        if limit <= 0 or (look.get("block") == now // block_ms and look.get("count", 0) >= limit):
             return False
-        if look.get("lastAt") and now - look["lastAt"] < LOOK_MIN_GAP:
+        per_hour = opts.get("look_per_hour", LOOK_PER_HOUR)
+        if not look_wait.rate_per_ms(per_hour, energy < TIRED):
             return False
-        return random.random() < look_chance(dt, float(opts.get("look_per_hour", LOOK_PER_HOUR)), energy < TIRED)
+        self._look_active = True
+        cooldown_end = look.get("lastAt", 0) + LOOK_MIN_GAP if look.get("lastAt") else 0
+        if now < cooldown_end:
+            return False
+        dt = max(0, min(now - previous, LOOK_TICK_CAP)) if previous and active else 0
+        dt = min(dt, max(0, now - cooldown_end))  # 仅推进跨过冷却线后的那一小段。
+        old = self.store.extra.get("lookWait")
+        wait = look_wait.advance(old, dt, per_hour, energy < TIRED)
+        if wait != old:
+            self.store.extra["lookWait"] = wait
+            self.store.save_state()
+        return wait["remaining"] <= 0
 
     def _note_look(self, now: int) -> None:
         block_ms = max(1, int(self.hub.options().get("look_block_minutes", LOOK_BLOCK_MIN))) * MIN
         block, look = now // block_ms, self.store.extra["look"]
         self.store.extra["look"] = {"block": block, "count": (look.get("count", 0) if look.get("block") == block else 0) + 1,
                                     "lastAt": now}
+        self.store.extra.pop("lookWait", None)  # 只有真正开始阅读才消费到期预算。
+        self._pause_look(now)
         self.store.save_state()
 
     async def look(self, proactive_on=None) -> None:
@@ -1856,13 +1875,13 @@ class GroupHub:
         her = state_at(now)
         for gid, chat in list(self.chats.items()):
             if enabled_on is not None and not enabled_on(gid):
-                chat.last_tick = now
+                chat._pause_look(now)
                 continue  # 这个群在仪表盘里关掉了
             if her.online:
                 chat._schedule_tick(now)
                 chat.schedule_look(now, proactive_on)
             else:
-                chat.last_tick = now
+                chat._pause_look(now)
             chat._sync_round_segment()
             chat.schedule_memory()
             chat.schedule_history()

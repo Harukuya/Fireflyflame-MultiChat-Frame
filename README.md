@@ -184,3 +184,8 @@ tests/               独立框架验收
 - 当前接口读取官方仓库中的 [ONNX 量化模型](https://huggingface.co/jinaai/jina-embeddings-v2-base-zh/tree/main/onnx)（`onnx/model_quantized.onnx`）及配套分词器。本仓库不附模型权重，默认虚构样例使用字面检索；启用向量检索需另行准备模型及兼容的资料向量。
 
 框架代码采用 [MIT License](LICENSE)，模型及运行库分别遵循各自许可。完整组件来源见 [第三方声明](THIRD_PARTY_NOTICES.md) 与 [向量服务说明](embed/NOTICE.md)。
+
+## 相关项目与作者
+
+- AstrBot 插件版：[超距通信：流萤丨Firefly Core](https://github.com/Harukuya/FireflyCore-Astrbot-Plugin)。面向 AstrBot + QQ（NapCat／OneBot）的流萤角色插件，包含角色设定与知识资料。
+- 作者博客：[Noctuna · 关于我](https://www.noctuna.cc/about)。
