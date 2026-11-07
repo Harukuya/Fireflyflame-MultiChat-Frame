@@ -19,13 +19,14 @@ from . import profile
 
 import asyncio
 import copy
+import inspect
 import math
 import os
 import random
 import re
 from contextlib import asynccontextmanager
 
-from . import activity, farewell, offline, persona, winext
+from . import activity, farewell, identity, offline, persona, winext
 from .caption import image_note
 from .quotes import normalize_quote, render_quote, resolve_quote
 from .energy import (
@@ -36,6 +37,7 @@ from .events import redact
 from .jsutil import HOUR, MIN, day_of, message_time, now_ms
 from .llm import Llm, b64_of, classify_exception, error_diagnostic, image_block
 from .mood import mood_instruction, on_emotion, settle
+from .model_routes import model_scope, request_model
 from .pacing import schedule as pace, seen_delay
 from .sanitize import detect_modern_slang, to_messages
 from .schedule import describe_activity, offline_after, online_since, state_at
@@ -232,6 +234,7 @@ class Engine:
             m["arrivedOnline"] = True
         self.store.save_messages()
 
+    @request_model("closing")
     async def _farewell_reply(self) -> None:
         state = self._leaving()
         if self.closed or self.in_flight or not state or state.get("used") or not state_at(now_ms()).online:
@@ -399,6 +402,7 @@ class Engine:
         self._offline_notice_task = self._spawn(self._flush_offline_notice())
 
     @measure_async("离线应答")
+    @request_model("offline_reply")
     async def _flush_offline_notice(self) -> None:
         """离线通知与正常发送串行；主联系人用模型短应答，不清留言、不算一次回话。"""
         try:
@@ -758,10 +762,19 @@ class Engine:
             out.insert(0, x["text"])
         return " ".join(out)
 
-    async def _see_images(self, msgs: list[dict], deadline: int | None = None) -> None:
+    async def _see_images(self, msgs: list[dict], deadline: int | None = None, *, force_text: bool = False) -> None:
         """（这边新加的）她的模型看不了图：要看的图先转述好，等它们转完（caption.py；deadline 是这一轮等到什么时候为止）"""
         if self.captions:
-            await self.captions(msgs, self.store.save_messages, deadline)
+            # 旧宿主/测试回调仍可只接受三个参数；不能吞掉回调内部真正的 TypeError。
+            kwargs = {}
+            if force_text:
+                try:
+                    parameters = inspect.signature(self.captions).parameters
+                    if "force_text" in parameters or any(p.kind == p.VAR_KEYWORD for p in parameters.values()):
+                        kwargs["force_text"] = True
+                except (TypeError, ValueError):
+                    pass
+            await self.captions(msgs, self.store.save_messages, deadline, **kwargs)
 
     def _lie_down(self) -> None:
         """她下线了：只把尚未处理的新话留到上线，不重新打开已看过的失败／拒答旧轮。"""
@@ -805,13 +818,14 @@ class Engine:
     def _use_tools(self) -> bool:
         return self.llm.supports("tool_use")
 
-    def _base(self, channel: str = "plain", mood: bool = True, *, energy_note: str | None = None) -> str:
+    def _base(self, channel: str = "plain", mood: bool = True, *, energy_note: str | None = None,
+              identity_tools: bool | None = None) -> str:
         """基础提示词：所有私聊带她自己的情绪；群友另换身份、带独立的人际认知。"""
         current = mood_instruction(settle(self.store.mood, now_ms())["value"]) if mood else None
         if self.peer:
             return persona.build_system_prompt(current, channel, identity_line=winext.peer_identity(self.peer["name"]),
-                                               energy_note=energy_note)
-        return persona.build_system_prompt(current, channel, energy_note=energy_note)
+                                               energy_note=energy_note, identity_tools=identity_tools)
+        return persona.build_system_prompt(current, channel, energy_note=energy_note, identity_tools=identity_tools)
 
     def _return_context(self, minutes: float, activity: str) -> str:
         """主要联系人沿用原版逐字文本；群友补发只替换该段中的对话人身份。"""
@@ -837,6 +851,7 @@ class Engine:
         return [x for x in [recent_memory, winext.time_block(now),
                            activity.current_context(now, state_fn=state_at, allow_query=allow_schedule),
                            activity.messages_query(schedule_msgs, now, state_fn=state_at) if schedule_msgs else None,
+                           identity.messages_query(schedule_msgs, private=self.peer is None) if schedule_msgs else None,
                            offline.notice_context(self.store, now), winext.opener_note(her_texts)] if x]
 
     async def _recall_all(self, about: str, history: list[dict]) -> str:
@@ -850,6 +865,9 @@ class Engine:
 
     def _tool_result(self, call: dict, history: list[dict], last: bool = False):
         if call["name"] == "recall":
+            identity_result = identity.call_result(call, private=self.peer is None)
+            if identity_result is not None:
+                return identity_result
             schedule_result = activity.call_result(call, now_ms(), state_fn=state_at)
             if schedule_result is not None:
                 return schedule_result
@@ -883,6 +901,7 @@ class Engine:
     # ============================================================
 
     @measure_async("私聊回复")
+    @request_model("private_reply")
     async def run_turn(self) -> None:
         if self.in_flight:
             # 她正在说别的（补发、掂量……）→ 等她说完再回
@@ -1270,6 +1289,7 @@ class Engine:
             self.catching_up = False
 
     @measure_async("私聊回复")
+    @request_model("catchup")
     async def _catchup(self) -> None:
         if self._leaving():
             return
@@ -1304,7 +1324,7 @@ class Engine:
             reply_tools = [winext.no_reply_tool(self._may_decline())] if self._use_tools() else None
             no_reply_note = ("【这轮是否开口】\n上面的补发开场和说话安排只在你决定回复时适用。"
                              "这批留言如果已经无需回应，可以用 no_reply 自然停下，不必为了交代刚上线而另发一句。") if reply_tools else None
-            system = "\n\n".join(x for x in [self._base("tools" if reply_tools else "plain"), self._who(),
+            system = "\n\n".join(x for x in [self._base("tools" if reply_tools else "plain", identity_tools=False), self._who(),
                                              self.memory.facts_note(), recollection, self._recent_note(said),
                                              past_note, *self._tail(now, schedule_msgs=backlog), note, no_reply_note] if x)
             # 准备的这阵子（查记忆）：他又说了、撤回了 → 这次作废，马上带着现在的留言重来；她下线了就留着，上线再补（这边新加的）
@@ -1433,6 +1453,7 @@ class Engine:
     # ---------- 道别 ----------
 
     @measure_async("私聊回复")
+    @request_model("farewell")
     async def _maybe_farewell(self, now: int) -> bool:
         if self._leaving() or self.farewell_said or self._awaiting_proactive_response(now):
             return False
@@ -1483,6 +1504,7 @@ class Engine:
     # ---------- 到点掂量 ----------
 
     @measure_async("私聊回复")
+    @request_model("thought")
     async def _maybe_recheck(self, now: int) -> bool:
         if self._leaving():
             return False
@@ -1505,7 +1527,7 @@ class Engine:
                 ago=ago_text(now - t["createdAt"]), activity=describe_activity(her),
                 minutes_left=(until - now) / MIN if until else None,
             )
-            system = "\n\n".join(x for x in [self._base("tools"), self._who(), self.memory.facts_note(), self._recent_note(t["topic"]),
+            system = "\n\n".join(x for x in [self._base("tools", identity_tools=False), self._who(), self.memory.facts_note(), self._recent_note(t["topic"]),
                                              *self._tail(now), note] if x)
             tools = tools_for(False, [], recheck_can_wait=not t["waited"])
             self._count("模型调用")
@@ -1601,6 +1623,7 @@ class Engine:
         return roll < chance
 
     @measure_async("私聊回复")
+    @request_model("proactive")
     async def _maybe_reach_out(self, now: int) -> bool:
         if not self._should_reach_out(now):
             return False
@@ -1615,7 +1638,7 @@ class Engine:
             was_neglect = hours >= NEGLECT_HOURS
             note = persona.build_proactive_context(describe_activity(her), her.activity == "night", hours, was_neglect)
             use_tools = self._use_tools()
-            system = "\n\n".join(x for x in [self._base("tools" if use_tools else "plain"), self._who(), self.memory.facts_note(), self._recent_note(""),
+            system = "\n\n".join(x for x in [self._base("tools" if use_tools else "plain", identity_tools=False), self._who(), self.memory.facts_note(), self._recent_note(""),
                                              *self._tail(now), note] if x)
 
             def last_user_id():
@@ -1684,8 +1707,6 @@ class Engine:
             return "正在回话，请稍后再整理"
         now = now_ms()
         self.memory.fade(now)  # 变模糊不用模型：照常
-        if not self._use_tools() or self.llm.provider() is None:
-            return None
         if not self.memory.enabled() and not force:
             return None
         online = state_at(now).online and not force
@@ -1694,9 +1715,20 @@ class Engine:
         tags = not session and not haze and (force or self.memory.can_try_tags(now)) and bool(self.memory.pending_tags())
         if not session and not haze and not tags:
             return "没有要整理的"
+        purpose = "memory" if session else "memory_haze" if haze else "memory_tags"
+        with model_scope(purpose):
+            if self.llm.provider() is None or (purpose != "memory_haze" and not self._use_tools()):
+                return None
+            return await self._run_memory_selected(session, haze, now)
+
+    async def _run_memory_selected(self, session, haze, now) -> str | None:
+        """选好用途后再校验模型；准备、工具补交与整理全程沿用同一次路由。"""
         self.mem_busy = True
         try:
             if session:
+                await self._see_images(session, now_ms() + WAIT_MS, force_text=True)
+                if self.closed:
+                    return None
                 if self.peer:
                     closeness = await self.memory.consolidate_peer(self._mem_chat, session, now, f"和{self.peer['name']}的私聊里",
                                                                    self.options().get("trailblazer", ""),

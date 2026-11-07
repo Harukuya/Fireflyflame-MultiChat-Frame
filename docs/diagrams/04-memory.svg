@@ -34,7 +34,7 @@
 <text x="642" y="489" font-size="18" font-weight="400" fill="#43576d">新读与新说先合成片段，安静 90 秒后封口。</text>
 <text x="642" y="518" font-size="18" font-weight="400" fill="#43576d">达 5 分钟／30 条／约 6000 字符也会触发封段。</text>
 <text x="642" y="547" font-size="18" font-weight="400" fill="#43576d">按消息切段；单条长消息不拆开。</text>
-<text x="642" y="576" font-size="18" font-weight="400" fill="#43576d">主模型写记事；无实质内容可以跳过。</text>
+<text x="642" y="576" font-size="18" font-weight="400" fill="#43576d">摘要模型写记事；无实质内容可以跳过。</text>
 <text x="642" y="605" font-size="18" font-weight="400" fill="#43576d">普通回复／看手机：共享池所有来源合计最多五包。</text>
 <text x="642" y="634" font-size="18" font-weight="400" fill="#43576d">接话窗口判断：只用本群最近两份完成记事。</text>
 <path d="M 640 308 L 640 350 L 319 350 L 319 393" class="edge"/>

@@ -100,8 +100,17 @@ uv pip install --python .venv/bin/python -r requirements.txt
 | `failure_notice`、`split_sentences` | `true`、`false` | 失败通知和私聊按句拆分；不改变角色的事实内容 |
 | `look_per_hour`、`look_block_minutes`、`look_block_max` | `1.5`、`60`、`2` | 每群独立的平滑随机等待速率与整点分块额度；不是保证每小时阅读次数 |
 | `dashboard.enabled`、`dashboard.port` | `true`、`8765` | 默认监听 `127.0.0.1`；嵌入宿主时可关闭，测试或多实例可用端口 `0` |
+| `request_models` | `{}`；用途 ID → 宿主模型 ID | 可按用途选模型；需同时注入 `model_directory`，空值沿用该用途原有宿主默认 |
 
 `judge_provider_for` 可省略，默认沿用主模型选择器；它不是 JSON 字段。`caption_provider_for` 按需提供：主模型不能看图时用于转述；未提供则没有额外视觉模型。`embedder` 同样由构造器注入，默认字面检索，不自动下载模型或请求付费向量服务。
+
+### 按用途选模型（可选宿主接口）
+
+`Runtime(..., model_directory=directory)` 可启用仪表盘模型选择。目录实现 `enabled_chat_models(conversation)` 和 `provider_by_id(id, conversation)` 两个同步方法：只列该会话可用、已启用的聊天模型，按真实会话再次核验并返回 `ModelProvider`。列表只含公开的 `id`、`label`、`model`、`modalities`、`capabilitiesKnown`；不要把原始配置、地址或密钥交给页面。实现契约见 [接入说明](../接入说明.md#按用途选择模型)。
+
+未提供目录时旧接入完全可用，仪表盘展示现有模型、禁用选择。用途包括普通私聊／群回复、补发、主动联系、念头、道别、收尾、离线短应答、两类群判断、临时记事、三类长期记忆工作及图片转述。空选项严格继承原有宿主回调；例如修改私聊回复模型不会顺带替换记忆模型或判断模型。判断仍继承 `judge_provider_for`，转述仍继承 `caption_provider_for`。
+
+仪表盘覆盖存为运行目录的 `model_selection.json`，按用途优先于初始 `config.request_models`；空值同样会覆盖初始指定、恢复宿主默认，不修改宿主配置文件。模型停用、删除或不可用时，该显式用途失败并显示不可用，不悄悄换模型。保存后从下一次业务请求生效，在途请求的能力判断、重试和工具续传沿用同一实例。判断和纯文本记忆材料即使主模型能看图，仍可使用转述模型补文字描述。
 
 ## 哪些文件需要填
 
@@ -123,6 +132,14 @@ uv pip install --python .venv/bin/python -r requirements.txt
 | `stickers/中文类别/` | 自备图片，目录名作为可选类别 | 随意放入别人的私有图片 |
 
 前三个 prompts 文件须存在、非空并使用 UTF-8。三个 JSON 即使不使用也保留合法的空结构；确切字段和清空方法见 [data/README.md](../data/README.md)。不要盲目全局替换人名和历史记录。空闲时可 `await runtime.reload_data()` 重新加载；运行数据、主要联系人或监听端口的变化应关闭旧实例后重建。
+
+### 常驻身份与按需身份资料
+
+`prompts/identity.md` 的身份核心、`voice.md` 的口吻和 `boundaries.md` 的边界仍每轮常驻，原文件不会自动删改。`data/self/她对自己的认知.md` 的详细自认改为按章节查看：保留 `## 给角色的`（兼容 `## 给她的`）与 `## 出处` 之间的内容，以 `### 标题` 分节；出处部分不交给模型。若 identity.md 太长，接入方应与用户确认哪些是常驻核心、哪些移到自认详设，不擅自削减用户人设。
+
+调用 `recall`，参数 `{"source":"identity","about":"具体身份问题"}`，程序在当前 Runtime 的已加载身份资料中按标题／关键词选最多 2 节、总计最多 1800 字符。它不是聊天回忆，不扫描聊天、剧情或跨会话池，也不额外调用分类模型。没找到只说明缺少该项资料并列可查主题；没有工具的模型只在本轮明确直问时本地补相关卡片，不因旧历史或引用展开。今天／昨天的安排和当前位置查 `schedule`；详设中的“现在”只表示背景时期，不覆盖当前日程。
+
+只有本轮实际提供 `recall` 时才提示按需查询；补发、念头掂量、主动联系等专门请求即使使用了其他工具，也不会提示调用本轮没有提供的身份查询工具。
 
 ## 会话与接口约定
 
@@ -146,6 +163,8 @@ uv pip install --python .venv/bin/python -r requirements.txt
 端口被占用时启动明确报错，改为另一个端口或 `0` 后重建实例；不要静默连接到别的进程。多角色请同时分开端口与数据目录。只体验面板可运行 `python -I -B examples/dashboard_demo.py --port 8765`，然后浏览器查看，按 Ctrl+C 结束；演示使用假数据和假模型。
 
 已有管理后台可用 `{"dashboard": {"enabled": false}}` 关闭本地监听，改用 `DashboardService` 和 `window.MultiChatPage`。宿主负责认证管理者；嵌入协议见 [页面桥说明](../pages/dashboard/README.md)。默认本地服务使用临时管理令牌及同源检查；这不替代远程部署的登录鉴权，不要直接转发到公网。
+
+主面板可进入独立“思想宇宙”页，本地地址为同一端口下 `/memory-universe/`。它只展示当前存留的记忆及明确关联，不调用模型、不改变记忆；正式页面不能静默以假数据替代接口失败。嵌入时同时提供该页资产与三个 `memory-universe/*` 只读接口，保留完整版本／时间包；用可选 `MultiChatPage.pageUrls` 配置同源导航。详情见页面桥说明，不需要修改 prompts 或资料样例。
 
 ## 验收与交付
 

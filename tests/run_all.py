@@ -30,12 +30,12 @@ def main():
         return 2
     print("Python:", sys.version.split()[0], "Node:", subprocess.check_output([node, "--version"]).decode().strip())
     jobs = [(name, [sys.executable, "-I", "-B", str(TESTS / name), str(ROOT)]) for name in
-            ("profile_test.py", "data_test.py", "model_port_test.py", "core_test.py", "runtime_test.py", "dashboard_api_test.py", "local_dashboard_test.py",
+            ("profile_test.py", "data_test.py", "model_port_test.py", "core_test.py", "runtime_test.py", "dashboard_api_test.py", "local_dashboard_test.py", "universe_host_test.py", "universe_test.py",
              "no_reply233_test.py", "no_reply_state233_test.py", "timeclean234_test.py", "privatecontext234_test.py",
              "window235_test.py", "farewell235_test.py", "activity236_test.py", "activityflow236_test.py",
              "offline_model236_test.py", "look237_test.py", "mission238_test.py",
-             "quote239_test.py", "quote_port239_test.py", "quote_excerpt239_test.py")]
-    jobs += [(name, [node, str(TESTS / name), str(ROOT)]) for name in ("frontend_test.cjs", "bridge_test.cjs", "no_reply_dashboard_test.cjs", "local_bridge_test.cjs")]
+             "quote239_test.py", "quote_port239_test.py", "quote_excerpt239_test.py", "model_directory240_test.py", "identity240_test.py", "route_scope240_test.py")]
+    jobs += [(name, [node, str(TESTS / name), str(ROOT)]) for name in ("frontend_test.cjs", "bridge_test.cjs", "no_reply_dashboard_test.cjs", "local_bridge_test.cjs", "model_routes240_dashboard_test.cjs", "universe_frontend_test.cjs")]
     total, started = 0, time.monotonic()
     for name, command in jobs:
         print(f"\nRUN {name}", flush=True)

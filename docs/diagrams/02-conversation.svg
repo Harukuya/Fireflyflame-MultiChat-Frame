@@ -23,7 +23,7 @@
 <text x="546" y="270" font-size="18" font-weight="400" fill="#43576d">等完复核变化</text>
 <path d="M 740 246 L 762 246" class="edge"/>
 <rect x="762" y="177" width="216" height="139" rx="16" fill="#f3efff" stroke="#b8a5e0" stroke-width="1.5"/>
-<text x="784" y="208" font-size="22" font-weight="700" fill="#654593">主模型与工具</text>
+<text x="784" y="208" font-size="22" font-weight="700" fill="#654593">回复模型与工具</text>
 <text x="784" y="241" font-size="18" font-weight="400" fill="#43576d">可以想一想、回想</text>
 <text x="784" y="270" font-size="18" font-weight="400" fill="#43576d">也可以选择不回复</text>
 <path d="M 978 246 L 1000 246" class="edge"/>
@@ -65,7 +65,7 @@
 <rect x="48" y="877" width="1184" height="185" rx="16" fill="#fff5e3" stroke="#dfbd77" stroke-width="1.5"/>
 <text x="70" y="908" font-size="22" font-weight="700" fill="#8b651b">临近下线且已有往来：道别 → 最多再收尾一次 → 封口</text>
 <text x="70" y="941" font-size="18" font-weight="400" fill="#43576d">纯主动开场、尚无人接话：不顺带道别，也不由心跳补道别。</text>
-<text x="70" y="970" font-size="18" font-weight="400" fill="#43576d">道别送出后关窗；私聊再来话／群里再次被叫到，才可用主模型收尾。</text>
+<text x="70" y="970" font-size="18" font-weight="400" fill="#43576d">道别送出后关窗；私聊再来话／群里再次被叫到，才用收尾模型应答。</text>
 <text x="70" y="999" font-size="18" font-weight="400" fill="#43576d">每个会话最多再成功回复一次；收尾不调用回想，用完等下段上线。</text>
 <text x="70" y="1028" font-size="18" font-weight="400" fill="#43576d">当前已离线时走离线通知／留言，不占在线收尾。</text>
 <path d="M 48 1093 H 1232" stroke="#dce3ed"/>

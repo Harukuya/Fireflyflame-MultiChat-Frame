@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>角色的思想宇宙</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="sky" aria-hidden="true"></div>
+
+    <header class="masthead">
+      <div class="title-block">
+        <p class="kicker"><span class="spark" aria-hidden="true"></span>MultiChat 多会话框架 · 记忆星图</p>
+        <h1>角色的思想宇宙</h1>
+        <div class="ruler" aria-hidden="true"></div>
+        <p class="caveat">这里是角色<strong>当前还留着</strong>的记忆，和它们之间被记下的联系——不代表角色此刻正在想什么。</p>
+      </div>
+      <div class="mast-side">
+        <div class="badges">
+          <span class="badge" title="浏览、筛选、查看都不会修改记忆，也不会请求模型">只读</span>
+          <span class="badge badge-mock" id="badge-mock" hidden>虚构示例</span>
+        </div>
+        <p class="read-at" id="read-at">尚未读取</p>
+        <div class="mast-actions">
+          <a class="btn" id="back-dashboard" hidden>返回仪表盘</a>
+          <button type="button" class="btn" id="refresh">重新读取</button>
+          <button type="button" class="btn ghost" id="theme-toggle" hidden></button>
+        </div>
+      </div>
+    </header>
+
+    <section class="bench" id="bench" hidden aria-label="设计预览">
+      <span class="bench-tag">设计预览</span>
+      <label>场景
+        <select id="scenario"></select>
+      </label>
+      <span class="bench-note">数据全部是编的，只用来检查界面在各种情况下的样子。</span>
+    </section>
+
+    <nav class="instrument" aria-label="查看方式与筛选">
+      <div class="row">
+        <div class="seg" role="group" aria-label="查看方式">
+          <button type="button" data-view="map" aria-pressed="true">星图</button>
+          <button type="button" data-view="timeline" aria-pressed="false">时间线</button>
+        </div>
+        <label class="search">
+          <span class="sr">查找</span>
+          <input id="q" type="search" maxlength="80" placeholder="查找角色现在能想起的文字或话题" autocomplete="off" />
+        </label>
+        <button type="button" class="btn ghost filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="filters">筛选</button>
+      </div>
+      <div class="filters" id="filters">
+        <label class="field">来源
+          <select id="scope"><option value="">全部来源</option></select>
+        </label>
+        <div class="field">时间
+          <div class="seg small" role="group" aria-label="时间范围" id="range">
+            <button type="button" data-range="all" aria-pressed="true">全部</button>
+            <button type="button" data-range="7d" aria-pressed="false">近 7 天</button>
+            <button type="button" data-range="30d" aria-pressed="false">近 30 天</button>
+            <button type="button" data-range="custom" aria-pressed="false">自定义</button>
+          </div>
+        </div>
+        <div class="field custom-range" id="custom-range" hidden>
+          <label>从 <input type="date" id="from" /></label>
+          <label>到 <input type="date" id="to" /></label>
+        </div>
+        <label class="field check" id="undated-field" hidden>
+          <input type="checkbox" id="undated" /> 也显示时间不详的
+        </label>
+        <p class="range-note" id="range-note" hidden>只筛选现在还保存着的记忆，不是过去某一刻的完整快照。</p>
+      </div>
+      <div class="kinds" id="kinds" role="group" aria-label="记忆类型"></div>
+      <div class="active" id="active-filters" hidden></div>
+    </nav>
+
+    <main class="stage">
+      <section class="viewport" aria-label="记忆">
+        <div class="map-wrap" id="map-panel">
+          <svg id="chart" role="application" tabindex="0"
+               aria-label="记忆星图。方向键在星体间移动，回车查看详情，Esc 取消选择，加号减号缩放，0 返回全景。"></svg>
+          <div class="map-hud">
+            <div class="zoom" role="group" aria-label="缩放">
+              <button type="button" class="btn icon" id="zoom-in" aria-label="放大">＋</button>
+              <button type="button" class="btn icon" id="zoom-out" aria-label="缩小">－</button>
+              <button type="button" class="btn icon wide" id="zoom-reset">全景</button>
+            </div>
+          </div>
+          <div class="map-key" aria-label="怎么看这张星图">
+            <p><b>离中心越远</b>，那段记忆离现在越久；<b>每一片星区</b>是一个会话。</p>
+            <p class="lines">
+              <span><i class="ln ln-link"></i>已保存的关联</span>
+              <span><i class="ln ln-topic"></i>同话题，不是因果</span>
+              <span><i class="ln ln-person"></i>人物</span>
+              <span><i class="ln ln-source"></i>来自该会话</span>
+            </p>
+          </div>
+          <div class="tooltip" id="tooltip" hidden></div>
+        </div>
+
+        <div class="timeline-wrap" id="timeline-panel" hidden>
+          <ol class="timeline" id="timeline"></ol>
+        </div>
+
+        <div class="tally" id="tally" aria-live="polite"></div>
+        <div class="state" id="state" hidden></div>
+      </section>
+
+      <aside class="dossier" id="dossier" aria-labelledby="dossier-title" tabindex="-1"></aside>
+    </main>
+
+    <footer class="foot">
+      <p>浏览、筛选和查看都只读：不会让角色重新想起，不会增加回想次数，也不会请求任何模型。原始聊天不在这里。</p>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <div class="sr" id="announce" aria-live="polite"></div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

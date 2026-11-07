@@ -73,6 +73,21 @@ An absent/empty modalities list preserves the core's permissive default.
     async def complete(self, request: ModelRequest) -> ModelResponse: ...
 
 
+class ModelDirectory(Protocol):
+    """Optional synchronous host port for the dashboard's model selections.
+
+    List only enabled chat models accessible to the supplied Conversation (or
+    None for the host default). Entries contain public id/label/model/modalities
+    and capabilitiesKnown; never include URLs, keys or raw SDK configuration.
+    Resolution must repeat the host's enabled/access checks. No provider object
+    or credential is saved by the framework.
+    """
+
+    def enabled_chat_models(self, conversation) -> list[dict]: ...
+
+    def provider_by_id(self, provider_id: str, conversation) -> ModelProvider | None: ...
+
+
 class ScriptedModelProvider:
     """Deterministic offline model for examples and integration tests."""
 

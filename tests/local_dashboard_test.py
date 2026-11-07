@@ -66,7 +66,7 @@ class LocalDashboardTests(unittest.IsolatedAsyncioTestCase):
         return await self.raw(data.encode("ascii") + payload)
 
     async def test_page_assets_and_host_bridge_stays_untouched(self):
-        for path in ("/", "/index.html", "/style.css", "/app.js", "/local.js"):
+        for path in ("/", "/index.html", "/style.css", "/app.js", "/local.js", "/models.js", "/models.css"):
             status, headers, body = await self.request("GET", path)
             self.assertEqual(status, 200, path)
             self.assertTrue(body)
@@ -91,7 +91,7 @@ class LocalDashboardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(r._dashboard._server.sockets[0].getsockname()[0], '127.0.0.1')
 
     async def test_gets_use_real_dashboard_service(self):
-        for path in ('overview', 'sessions', 'memory', 'intimacy', 'sticker'):
+        for path in ('overview', 'sessions', 'memory', 'intimacy', 'sticker', 'models'):
             status, _, body = await self.request('GET', '/api/'+path, authenticated=True)
             self.assertEqual(status, 200)
             self.assertTrue(json.loads(body)['ok'], path)
@@ -117,7 +117,8 @@ class LocalDashboardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(json.loads(body)['error']['code'], 'not_found')
 
     async def test_all_api_reads_and_writes_require_local_token(self):
-        for method, path, body in [('GET','/api/overview',None),('POST','/api/reload',{})]:
+        for method, path, body in [('GET','/api/overview',None),('POST','/api/reload',{}),
+                                   ('GET','/api/models',None),('POST','/api/models/update',{'routes':{'summary':''}})]:
             status, _, _ = await self.request(method,path,body)
             self.assertEqual(status,403)
             status, _, _ = await self.request(method,path,body,headers={'Authorization':'Bearer fake-only'})

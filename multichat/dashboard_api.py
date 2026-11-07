@@ -10,6 +10,7 @@ import base64
 import os
 
 from . import dashboard
+from .model_selection import ModelSelectionError
 from .validation import entity_id
 
 
@@ -23,9 +24,10 @@ class DashboardAPIError(Exception):
 class DashboardService:
     """One instance per Runtime; hosts must authorize every management request."""
 
-    GET = {"overview", "sessions", "memory", "intimacy", "sticker"}
+    UNIVERSE_GET = {"memory-universe/meta", "memory-universe/items", "memory-universe/item"}
+    GET = {"overview", "sessions", "memory", "intimacy", "sticker", "models"} | UNIVERSE_GET
     POST = {"sessions/add", "sessions/update", "sessions/remove", "memory/run",
-            "memory/retire", "reload"}
+            "memory/retire", "reload", "models/update"}
 
     def __init__(self, runtime):
         self.runtime = runtime
@@ -40,6 +42,12 @@ class DashboardService:
                 raise DashboardAPIError("not_found", "没有这个仪表盘接口")
             if path not in (self.GET if method == "GET" else self.POST if method == "POST" else set()):
                 raise DashboardAPIError("method_not_allowed", "这个接口不支持该请求方法")
+            if path in self.UNIVERSE_GET:
+                # This view deliberately avoids existing GET helpers which may
+                # synchronize sessions, expire memories or persist intimacy.
+                from . import universe
+                with self.runtime.profile_scope():
+                    return universe.handle(self.runtime, path.rsplit("/", 1)[1], params)
             data = params if method == "GET" else body
             if data is None:
                 data = {}
@@ -60,9 +68,16 @@ class DashboardService:
             return {"ok": True, **result}
         except DashboardAPIError as exc:
             return {"ok": False, "error": {"code": exc.code, "message": exc.message}}
+        except ModelSelectionError as exc:
+            return {"ok": False, "error": {"code": exc.code, "message": exc.message}}
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            if isinstance(path, str) and path in self.UNIVERSE_GET:
+                # Browsing must not create a persisted event even on failure.
+                return {"ok": False, "schemaVersion": 1, "error": {
+                    "code": "READ_FAILED", "message": "暂时无法读取记忆，请稍后重试", "retryable": True,
+                }}
             # Do not expose model/transport exceptions, credentials, or data text.
             busy = isinstance(exc, RuntimeError) and str(exc) == "Runtime is busy"
             try:
@@ -99,6 +114,8 @@ class DashboardService:
         p = self.runtime
         if path == "overview":
             return dashboard.overview(p)
+        if path == "models":
+            return p.models_view()
         if path == "sessions":
             return {"rows": dashboard.sessions_view(p), "whitelist": False,
                     "note": "会话名单由框架管理；停用或移出名单会中止该会话正在运行的任务。平台权限由宿主负责。"}
@@ -114,6 +131,10 @@ class DashboardService:
 
     async def _post(self, path: str, data: dict) -> dict:
         p = self.runtime
+        if path == "models/update":
+            if set(data) != {"routes"}:
+                raise DashboardAPIError("invalid_routes", "只接受 routes 模型用途对象")
+            return p.update_model_routes(data["routes"])
         if path.startswith("sessions/"):
             kind, sid = self._session(data)
             if path == "sessions/add":

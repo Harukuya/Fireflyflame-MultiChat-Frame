@@ -28,6 +28,8 @@ from .jsutil import now_ms
 from .knowledge import Knowledge
 from .llm import Llm
 from .memory import Memory
+from .model_routes import ROUTES, ROUTE_IDS, current_purpose, pin_provider
+from .model_selection import ModelSelection, ModelSelectionError, provider_label
 from .people import People
 from .ports import Conversation, IncomingMessage
 from .recent import RecentPool
@@ -80,7 +82,8 @@ class _PrivateEngine(Engine):
 
 class Runtime:
     def __init__(self, data_root, transport, provider_for, config=None, assets_dir=None,
-                 judge_provider_for=None, caption_provider_for=None, *, embedder=None, logger=None):
+                 judge_provider_for=None, caption_provider_for=None, *, embedder=None, logger=None,
+                 model_directory=None):
         self.config = deepcopy(config or {})
         self.assets_dir = Path(assets_dir or Path(__file__).resolve().parent.parent).resolve()
         self.data_root = str(Path(data_root).resolve())
@@ -91,6 +94,7 @@ class Runtime:
         self._provider_for = provider_for
         self._judge_provider_for = judge_provider_for or provider_for
         self._caption_provider_for = caption_provider_for
+        self._model_selection = ModelSelection(self.data_root, self.config, model_directory)
         self.log = logger or logging.getLogger("multichat")
         self.embedder = embedder or Embedder(self.log)  # Literal fallback; no Node process started.
         self._owns_embedder = embedder is None
@@ -178,11 +182,66 @@ class Runtime:
     def trailblazer_umo(self):
         return self.private_umo(self.trailblazer) if self.trailblazer else ""
 
-    def chat_provider(self, umo=None):
-        return self._provider_for(self._conversation(umo))
+    def _default_provider(self, conversation, purpose):
+        if purpose == "caption":
+            return self._caption_provider_for(conversation) if self._caption_provider_for else None
+        if purpose in {"window_judge", "look_judge"}:
+            return self._judge_provider_for(conversation)
+        return self._provider_for(conversation)
 
-    def judge_provider(self, umo=None):
-        return self._judge_provider_for(self._conversation(umo))
+    def model_provider(self, umo=None, purpose=None):
+        conversation = self._conversation(umo)
+        purpose = purpose or current_purpose() or ("group_reply" if conversation and conversation.kind == "group" else "private_reply")
+        if purpose not in ROUTE_IDS:
+            raise ValueError("Unknown model purpose")
+
+        def resolve():
+            if self._model_selection.selected(purpose):
+                try:
+                    return self._model_selection.resolve(purpose, conversation)
+                except Exception as error:
+                    # The host directory may fail; never leak its exception or
+                    # silently call the default model after an explicit choice.
+                    self.log.warning("Model directory lookup failed (%s)", type(error).__name__)
+                    return None
+            return self._default_provider(conversation, purpose)
+
+        return pin_provider((id(self), conversation.scope if conversation else "", purpose), resolve)
+
+    def chat_provider(self, umo=None, purpose=None):
+        return self.model_provider(umo, purpose)
+
+    def judge_provider(self, umo=None, purpose=None):
+        return self.model_provider(umo, purpose or current_purpose() or "look_judge")
+
+    def models_view(self):
+        conversation = self._conversation(self.trailblazer_umo())
+        supported = self._model_selection.supported
+        note = "模型名称以主要联系人或宿主默认会话为样例，实际请求仍按所在会话解析。空选项严格沿用该用途原有宿主默认；保存从下一次业务请求生效。"
+        try:
+            providers = self._model_selection.catalog(conversation)
+        except Exception:
+            providers = []
+            note += " 宿主模型目录暂不可用，已保存选择不会自动回退。"
+        if not supported:
+            note += " 当前宿主未提供模型目录，请在宿主配置模型。"
+        rows = []
+        for route in ROUTES:
+            selected = self._model_selection.selected(route["id"])
+            try:
+                provider = (self._model_selection.resolve(route["id"], conversation) if selected
+                            else self._default_provider(conversation, route["id"]))
+            except Exception:
+                provider = None
+            rows.append({**route, "selected": selected, "effective": provider_label(provider),
+                         "available": provider is not None, "defaultLabel": "跟随宿主会话默认"})
+        return {"supported": supported, "providers": providers, "routes": rows, "note": note}
+
+    def update_model_routes(self, routes):
+        if self._stopped:
+            raise ModelSelectionError("closed", "框架已停止，不能修改模型")
+        self._model_selection.update(routes, self._conversation(self.trailblazer_umo()))
+        return {**self.models_view(), "message": "模型用途已保存，将在下一次业务请求生效"}
 
     def llm_for(self, umo):
         if umo not in self._llms:
@@ -194,20 +253,20 @@ class Runtime:
             self._judge_llms[umo] = Llm(lambda: self.judge_provider(umo), self.log, events=self.events)
         return self._judge_llms[umo]
 
-    def caption_provider(self, umo, llm):
-        if llm.supports("image") or self._caption_provider_for is None:
+    def caption_provider(self, umo, llm, *, force_text=False):
+        if not force_text and llm.supports("image"):
             return None
-        return self._caption_provider_for(self._conversation(umo))
+        return self.model_provider(umo, "caption")
 
     def _private_captions(self, sid):
-        def see(msgs, saved, deadline=None):
+        def see(msgs, saved, deadline=None, *, force_text=False):
             scope = self.private_umo(sid)
-            return self.captioner.ready(self.caption_provider(scope, self.llm_for(scope)), msgs, saved, deadline)
+            return self.captioner.ready(self.caption_provider(scope, self.llm_for(scope), force_text=force_text), msgs, saved, deadline)
         return see
 
-    def _group_captions(self, gid, msgs, saved, deadline=None):
+    def _group_captions(self, gid, msgs, saved, deadline=None, *, force_text=False):
         scope = self.group_umo(gid)
-        return self.captioner.ready(self.caption_provider(scope, self.llm_for(scope)), msgs, saved, deadline)
+        return self.captioner.ready(self.caption_provider(scope, self.llm_for(scope), force_text=force_text), msgs, saved, deadline)
 
     def options(self):
         def number(name, default, minimum=0):

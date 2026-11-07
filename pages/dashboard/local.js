@@ -4,6 +4,7 @@
   const token = document.querySelector('meta[name="multichat-local-token"]')?.content;
   if (!token) return;
   window.MultiChatPage = {
+    pageUrls: { dashboard: "/", "memory-universe": "/memory-universe/" },
     async request({ method, path, params = {}, body = {} }) {
       const url = new URL(`/api/${path}`, window.location.origin);
       if (method === "GET") for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MultiChat 多会话框架</title>
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./models.css" />
   </head>
   <body>
     <header class="top">
@@ -17,6 +18,7 @@
       </div>
       <div class="top-actions">
         <span id="updated" class="muted"></span>
+        <a id="memory-universe-link" class="page-link" hidden>思想宇宙</a>
         <button id="reload-data" class="ghost">重新读数据</button>
         <button id="refresh">刷新</button>
       </div>
@@ -48,7 +50,7 @@
 
         <div class="card">
           <h2>模型和数据</h2>
-          <p class="muted">下方显示主要联系人私聊的模型配置，未设置主要联系人时显示默认配置。各个私聊和群聊分别用宿主给那个会话配的模型；判断模型没另选时，也跟随对应会话。</p>
+          <p class="muted">下方显示主要联系人会话的模型示例；各用途可在“按请求选择模型”中单独选择。留空沿用宿主原配置，其他会话的默认模型可以不同。</p>
           <dl class="kv">
             <dt>对话</dt><dd id="m-chat"></dd>
             <dt>判断</dt><dd id="m-judge"></dd>
@@ -64,6 +66,19 @@
           <h3>环境检查</h3>
           <ul class="env" id="env"></ul>
         </div>
+      </section>
+
+      <section class="card" id="model-settings">
+        <div class="card-head">
+          <h2>按请求选择模型</h2>
+          <div class="model-route-actions">
+            <button type="button" id="models-refresh" class="ghost">刷新可用模型</button>
+            <button type="button" id="models-save" disabled>保存模型选择</button>
+          </div>
+        </div>
+        <p class="muted" id="models-note">正在读取宿主中已启用的聊天模型……</p>
+        <div class="model-route-grid" id="model-routes"></div>
+        <p id="models-status" role="status" aria-live="polite"></p>
       </section>
 
       <section class="card">
@@ -127,7 +142,7 @@
           <tbody></tbody>
         </table></div>
         <p class="muted">停用或移出会话后，会停止接收新消息，并中止这个会话正在准备、请求、发送和整理的任务。已发出的消息保留；再次启用会创建新的会话实例。</p>
-        <p class="muted">每轮新看过的话和实际发出的回复，由该群主模型写成角色自己的简短记事；多看几批合成一轮，只看没回也可以记。新轮带新消息和最多五份旧记事：最近两份固定，较早三份随机，相关旧事优先替换。记事未完成时暂留有限原文；原话仍存盘供回查。长期记忆开着的群，下线后再整理全部相关记事；记事本身不打亲密度分。私聊使用未整理原话和本会话最近三条长期事件，不使用群临时记事。</p>
+        <p class="muted">每轮新看过的话和实际发出的回复，由临时记事模型写成角色自己的简短记事；多看几批合成一轮，只看没回也可以记。新轮带新消息和最多五份旧记事：最近两份固定，较早三份随机，相关旧事优先替换。记事未完成时暂留有限原文；原话仍存盘供回查。长期记忆开着的群，下线后再整理全部相关记事；记事本身不打亲密度分。私聊使用未整理原话和本会话最近三条长期事件，不使用群临时记事。</p>
         <form id="add-session" class="inline-form">
           <select id="add-kind"><option value="group">群</option><option value="private">私聊</option></select>
           <input id="add-id" placeholder="群聊或账号 ID" />
@@ -196,5 +211,6 @@
     <div id="tool-detail-popover" class="tool-detail-popover" role="dialog" aria-labelledby="tool-detail-title" aria-modal="false" hidden></div>
     <div id="toast" class="toast"></div>
     <script type="module" src="./app.js"></script>
+    <script type="module" src="./models.js"></script>
   </body>
 </html>

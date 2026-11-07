@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from multichat import profile, persona, winext, schedule
+from multichat import profile, persona, winext, schedule, identity
 
 passed = 0
 
@@ -127,8 +127,12 @@ persona.load_self("## 给角色的\nGLOBAL_SELF_MARKER\n## 出处")
 a["self_block"] = "ONLY_A_SELF_MARKER"
 b["self_block"] = None
 with profile.use(a):
-    check("ONLY_A_SELF_MARKER" in persona.build_system_prompt() and "GLOBAL_SELF_MARKER" not in persona.build_system_prompt(), "runtime self overrides legacy global")
+    check("ONLY_A_SELF_MARKER" not in persona.build_system_prompt() and "GLOBAL_SELF_MARKER" not in persona.build_system_prompt(), "runtime detailed self is not resident")
+    check(persona.identity_self() == "ONLY_A_SELF_MARKER", "runtime self overrides legacy global")
+    detail = identity.query("ONLY_A_SELF_MARKER")
+    check("ONLY_A_SELF_MARKER" in detail and "GLOBAL_SELF_MARKER" not in detail, "on-demand identity stays in runtime A")
 with profile.use(b):
     check("ONLY_A_SELF_MARKER" not in persona.build_system_prompt() and "GLOBAL_SELF_MARKER" not in persona.build_system_prompt(), "empty runtime self remains empty")
+    check(persona.identity_self() is None and "GLOBAL_SELF_MARKER" not in identity.query("GLOBAL_SELF_MARKER"), "on-demand empty runtime does not borrow global self")
 persona.load_self(None)
 print(f"profile {passed}/{passed}")

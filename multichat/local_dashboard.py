@@ -18,6 +18,7 @@ from .dashboard_api import DashboardService
 HEADER_LIMIT = 16 * 1024
 BODY_LIMIT = 64 * 1024
 MAX_CLIENTS = 32
+UNIVERSE_FILES = ("index.html", "app.js", "style.css", "universe-api.js", "mock-data.js")
 
 
 class HTTPError(Exception):
@@ -44,9 +45,12 @@ class LocalDashboard:
         if self._server:
             return
         # Validate installation before listening; no partial running service.
-        for name in ("index.html", "app.js", "style.css", "local.js"):
+        for name in ("index.html", "app.js", "style.css", "local.js", "models.js", "models.css"):
             if not (self.assets / name).is_file():
                 raise RuntimeError(f"仪表盘资源缺失：pages/dashboard/{name}")
+        for name in UNIVERSE_FILES:
+            if not (self.assets.parent / "memory-universe" / name).is_file():
+                raise RuntimeError(f"仪表盘资源缺失：pages/memory-universe/{name}")
         try:
             self._server = await asyncio.start_server(self._accept, "127.0.0.1", self.port,
                                                        limit=HEADER_LIMIT)
@@ -171,6 +175,11 @@ class LocalDashboard:
             params = {}
             for key, values in parse_qs(url.query, keep_blank_values=True, max_num_fields=32).items():
                 if len(values) != 1:
+                    if method == "GET" and path[5:] in DashboardService.UNIVERSE_GET:
+                        return 200, "application/json; charset=utf-8", json.dumps({
+                            "ok": False, "schemaVersion": 1, "error": {
+                                "code": "INVALID_QUERY", "message": "查询参数不可重复", "retryable": False,
+                            }}, ensure_ascii=False).encode("utf-8")
                     raise HTTPError(400, "查询参数不可重复")
                 params[key] = values[0]
             body = None
@@ -187,11 +196,18 @@ class LocalDashboard:
         if method != "GET":
             raise HTTPError(405, "静态页面只支持 GET")
         assets = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js",
-                  "/style.css": "style.css", "/local.js": "local.js"}
+                  "/style.css": "style.css", "/local.js": "local.js",
+                  "/models.js": "models.js", "/models.css": "models.css"}
         name = assets.get(path)
+        asset_root = self.assets
+        universe_assets = {"/memory-universe/": "index.html", **{
+            "/memory-universe/" + name: name for name in UNIVERSE_FILES}}
+        if path in universe_assets:
+            name = universe_assets[path]
+            asset_root = self.assets.parent / "memory-universe"
         if name is None:
             raise HTTPError(404, "没有这个页面")
-        data = (self.assets / name).read_bytes()
+        data = (asset_root / name).read_bytes()
         if name == "index.html":
             # Inject only in this adapter. The on-disk page stays host-neutral.
             addition = (f'<meta name="multichat-local-token" content="{self._token}">\n'

@@ -7,6 +7,7 @@ import re
 from .jsutil import js_round, js_trim
 from . import profile
 from .tools import MEMORY_SELECTION
+from . import identity as identity_lookup
 
 def __getattr__(name: str) -> str:
     # 兼容其他框架模块读取这些属性；每次读取都使用最新的可编辑配置。
@@ -20,6 +21,7 @@ PROHIBITIONS = """
 【对话边界】
 不要无依据地替对方描述感受、编造承诺或共同经历。没有理解就说明，不懂装懂不能代替回应。
 不要把历史摘要、工具结果或风格样例当成本轮对方刚说的话。是否提问、安慰或给建议，应结合实际语境。
+**不要轻易用抛个问题的方式收尾，除非你真的觉得需要。**
 """.strip()
 
 FORMAT = """
@@ -61,13 +63,24 @@ def load_self(md_text: str | None) -> None:
     _SELF = build_self_block(md_text) if md_text else None
 
 
+def identity_core(*, private: bool = True) -> str:
+    return profile.prompt("identity")
+
+
+def identity_self() -> str | None:
+    return profile.self_block(_SELF)
+
+
+def identity_background(*, private: bool = True) -> str:
+    return ""
+
+
 def build_system_prompt(mood: str | None = None, channel: str = "plain", identity_line: str | None = None,
-                        *, energy_note: str | None = None) -> str:
+                        *, energy_note: str | None = None, identity_tools: bool | None = None) -> str:
     """身份、口吻、边界来自 prompts；会话身份不会覆盖用户填写的人设。"""
     fmt = f"{FORMAT}\n{FORMAT_TOOLS}" if channel == "tools" else FORMAT
     context = identity_line or f"你现在正在和{profile.primary_name()}私聊。"
-    self_text = profile.self_block(_SELF)
-    blocks = [profile.prompt("identity"), context, *([self_text] if self_text else []),
+    blocks = [profile.prompt("identity"), context, identity_lookup.hint(tools=channel == "tools" if identity_tools is None else identity_tools),
               profile.prompt("voice"), profile.prompt("boundaries"), PROHIBITIONS, fmt]
     state = build_state_context(mood, energy_note)
     if state:

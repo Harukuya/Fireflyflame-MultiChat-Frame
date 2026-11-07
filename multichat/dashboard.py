@@ -48,6 +48,19 @@ def timeline_today(now: int) -> list[list]:
     return out
 
 
+def _purpose_provider(p, purpose: str, umo=None):
+    if hasattr(p, "model_provider"):
+        return p.model_provider(umo or p.trailblazer_umo(), purpose)
+    return p.chat_provider(umo or p.trailblazer_umo())
+
+
+def _supports_provider(provider, capability: str) -> bool:
+    if provider is None:
+        return False
+    modalities = (getattr(provider, "provider_config", None) or {}).get("modalities") or []
+    return not modalities or capability in modalities
+
+
 def overview(p) -> dict:
     now = now_ms()
     her = state_at(now)
@@ -59,8 +72,8 @@ def overview(p) -> dict:
     thought = e.store.thought if e else None
     status_key = _status_key(her)
     status = {"online": "在线", "mission": "忙碌中", "rest": "休息"}[status_key]
-    chat_p = p.chat_provider(p.trailblazer_umo())
-    judge_p = p.judge_llm_for(p.trailblazer_umo()).provider() if hasattr(p, "judge_llm_for") else p.judge_provider()
+    chat_p = _purpose_provider(p, "private_reply")
+    judge_p = _purpose_provider(p, "window_judge") if hasattr(p, "model_provider") else (p.judge_llm_for(p.trailblazer_umo()).provider() if hasattr(p, "judge_llm_for") else p.judge_provider())
     version = {}
     vpath = os.path.join(p.replica_dir(), "版本.json")
     if os.path.isfile(vpath):
@@ -91,9 +104,9 @@ def overview(p) -> dict:
                 (getattr(chat_p, "provider_config", {}) or {}).get("id") and
                 (getattr(chat_p, "provider_config", {}) or {}).get("id") ==
                 (getattr(judge_p, "provider_config", {}) or {}).get("id"))),
-            "tools": p.llm_for(p.trailblazer_umo()).supports("tool_use"), "image": p.llm_for(p.trailblazer_umo()).supports("image"),
+            "tools": _supports_provider(chat_p, "tool_use"), "image": _supports_provider(chat_p, "image"),
             "caption": _caption_name(p),
-            "summary": "每个群用自己的主模型写记事（不需要另选模型）",
+            "summary": _provider_name(_purpose_provider(p, "summary")),
             "vectors": _vectors_name(p),
             "data": p.data_dir(), "version": version.get("exportedAt", ""),
         },
@@ -238,7 +251,7 @@ def env_check(p) -> list[dict]:
             if llm.provider() is None:
                 out.append({"level": "warn", "text": f"私聊 {qq} 没有可用的模型，请检查宿主的模型选择器。"})
             elif not llm.supports("tool_use"):
-                out.append({"level": "warn", "text": f"私聊 {qq} 用的模型没勾「工具调用」：没有念头、追问、记忆。"})
+                out.append({"level": "warn", "text": f"私聊 {qq} 回复模型没勾「工具调用」：本轮没有回想等工具；念头和记忆按各自模型配置。"})
     if not out:
         out.append({"level": "ok", "text": "没发现会和角色抢话、或者会拦住消息的设置。"})
     return out
@@ -270,7 +283,7 @@ def sessions_view(p) -> list[dict]:
                      "lookMax": int(opts.get("look_block_max", 2)),
                      "history": chat.history_archive.stats() if chat and getattr(chat, "history_archive", None) else None,
                      "rounds": chat.round_memory.stats() if chat and getattr(chat, "round_memory", None) else None,
-                     "summaryModel": _provider_name(p.chat_provider(p.group_umo(gid)))
+                     "summaryModel": _provider_name(_purpose_provider(p, "summary", p.group_umo(gid)))
                      if hasattr(p, "chat_provider") and hasattr(p, "group_umo") else ""})
     return rows
 

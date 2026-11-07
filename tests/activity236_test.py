@@ -149,7 +149,7 @@ check(batch.count("【按需查看：") == 2 and "06:00–12:00" in batch and "1
 check(A.messages_query([{"role": "user", "text": "今天我在家", "ts": NOW}], NOW, state_fn=forbidden) is None, "批量普通自述不触发查询")
 
 props = T.RECALL["input_schema"]["properties"]
-check(set(props["source"]["enum"]) == {"memory", "schedule"}, "工具来源可显式区分")
+check(set(props["source"]["enum"]) == {"memory", "schedule", "identity"}, "工具来源可显式区分")
 check(set(props["day"]["enum"]) == A._DAYS and props["period"]["maxLength"] == 40, "工具日期与参数边界一致")
 check(T.RECALL["input_schema"]["required"] == ["about"], "兼容旧工具调用必填项")
 S.describe_activity = original_describe

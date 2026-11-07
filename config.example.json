@@ -1,6 +1,7 @@
 {
   "character_name": "小伴",
   "dashboard": {"enabled": true, "port": 8765},
+  "request_models": {},
   "primary_user_name": "主要联系人",
   "primary_user_id": "",
   "schedule_mode": "daily",

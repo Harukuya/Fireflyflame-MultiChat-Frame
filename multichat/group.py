@@ -16,13 +16,14 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import math
 import os
 import random
 import re
 from contextlib import asynccontextmanager
 
-from . import activity, farewell, offline, persona, winext
+from . import activity, farewell, identity, offline, persona, winext
 from .caption import image_note
 from .quotes import normalize_quote, render_quote, resolve_quote
 from . import look_wait
@@ -37,6 +38,7 @@ from .jsutil import HOUR, MIN, message_time, now_ms, strip_ps
 from .llm import b64_of, error_diagnostic, image_block
 from .memory import open_threads, thread_line
 from .mood import mood_instruction, on_emotion, settle
+from .model_routes import model_scope, request_model
 from .pacing import schedule as pace
 from .sanitize import to_messages
 from .schedule import describe_activity, offline_after, online_since, state_at
@@ -392,6 +394,7 @@ class GroupChat:
         self.store.save_messages()
         self.store.save_state()
 
+    @request_model("closing")
     async def _farewell_reply(self) -> bool:
         state = self._leaving()
         if self.closed or not state or state.get("used") or not state_at(now_ms()).online or self.in_flight:
@@ -614,7 +617,7 @@ class GroupChat:
                 return  # 刚放行就撤回了也走 finally，继续查看同段的其他候选请求。
             await self._mission_ack_turn(m, her, now, segment)
 
-
+    @request_model("offline_reply")
     async def _mission_ack_turn(self, m: dict, her, now: int, segment: str | None = None) -> None:
         hub, x = self.hub, self.store.extra
         seg = segment or offline.segment_key(now, state_at)
@@ -930,6 +933,7 @@ class GroupChat:
             self.history_archive.source_note(shown),
         ] if s)
 
+    @request_model(lambda self, pool, start, mode, query_msgs: "window_judge" if mode == "window" else "look_judge")
     async def assess(self, pool: list[dict], start: int, mode: str, query_msgs: list[dict]) -> dict:
         """问判断模型要不要接。
         接话窗口：只看要不要接着说，短提示词、不查背景（真要接，回话那轮再查）。
@@ -981,17 +985,28 @@ class GroupChat:
             system = self._judge_system(mode, pool[start:], bg, now)
             if memo:
                 system += "\n\n" + memo
+        # 判断没有回想工具；只补这次实际翻到的新话明确问到的身份资料，不扫描旧前文或引文。
+        def identity_for(msgs):
+            note = identity.messages_query([m for m in msgs if m.get("id") in fresh], private=False)
+            return "\n\n" + note if note else ""
+
+        identity_note = identity_for(pool[start:])
+        if identity_note:
+            system += identity_note
         # 每次交给判断模型之前（包括「多看几条」翻到更早的）：要看的图先转述好
         # 精力在问判断模型的那一刻再看一次（共用的精力，等图的时候可能被别处耗掉）
         async def prepare(msgs):
             self._protect_context(originals(msgs))  # 多看几条新增的实际阅读范围也保护，其他pool消息不提前算已读。
-            await self._see_images(msgs, deadline)
+            # 判断的 _lines 永远是纯文字；不能因回复模型或判断模型会看图就省掉转述。
+            await self._see_images(msgs, deadline, force_text=True)
             self._capture_shared(originals(msgs))
         with measure(hub.events, "群判断"):
             d = await judge(self.judge_llm, system, mode, pool, start, hub.trailblazer, lambda: hub.events.count("判断调用"),
                             prepare=prepare,
                             gate=lambda: current_energy(hub.her.energy, now_ms())["value"] >= TOO_TIRED_TO_ASK,
-                            system_for=(lambda msgs: self._judge_system(mode, msgs, bg, now) + ("\n\n" + memo if memo else "")) if mode == "look" else None)
+                            system_for=(lambda msgs: self._judge_system(mode, msgs, bg, now)
+                                        + ("\n\n" + memo if memo else "")
+                                        + identity_for(msgs)) if mode == "look" else None)
         if mode == "window":
             d["read"] = originals(d["read"])
         d["bg"] = bg
@@ -1002,10 +1017,64 @@ class GroupChat:
         d["selectionKey"] = selection_key
         return d
 
-    async def _see_images(self, msgs: list[dict], deadline: int | None = None) -> None:
+    def _save_captions(self, rows: list[dict]) -> None:
+        """只把转述合回仍存在的同 ID/同文件对象，不用请求副本覆盖读状态或引文。"""
+        if self.closed:
+            return
+        captions = {(m.get("id"), a.get("file")): a["caption"] for m in rows
+                    if isinstance(a := m.get("attachment"), dict) and a.get("caption") and a.get("file")}
+        if not captions:
+            return
+        live = False
+        for row in [*self.msgs, *self._archive_context]:
+            a = row.get("attachment") or {}
+            cap = captions.get((row.get("id"), a.get("file")))
+            if cap:
+                a["caption"] = cap
+                live = True
+        if live:
+            self.store.save_messages()
+        changed = []
+        for row in self.history_archive.messages:
+            a = row.get("attachment") or {}
+            cap = captions.get((row.get("id"), a.get("file")))
+            if cap and a.get("caption") != cap:
+                a["caption"] = cap
+                changed.append(row)
+        if changed:
+            self._archive_action(self.history_archive.sync, changed)
+
+    async def _see_images(self, msgs: list[dict], deadline: int | None = None, *, force_text: bool = False) -> None:
         """她的模型看不了图：要看的图先转述好，等它们转完（caption.py；deadline 是这一轮等到什么时候为止）"""
         if self.hub.captions:
-            await self.hub.captions(self.gid, msgs, self.store.save_messages, deadline)
+            kwargs = {}
+            if force_text:
+                try:
+                    parameters = inspect.signature(self.hub.captions).parameters
+                    if "force_text" in parameters or any(p.kind == p.VAR_KEYWORD for p in parameters.values()):
+                        kwargs["force_text"] = True
+                except (TypeError, ValueError):
+                    pass
+            await self.hub.captions(self.gid, msgs, lambda: self._save_captions(msgs), deadline, **kwargs)
+            # 同文件可能已由另一份档案副本发起转述；ready 等到任务完成，当前副本却仍无 caption。
+            # 只补同 ID/同文件的图注，不能用档案原件替换本轮的文本、引用或读状态。
+            missing = {(m.get("id"), a.get("file")): a for m in msgs
+                       if isinstance(a := m.get("attachment"), dict) and a.get("file") and not a.get("caption")}
+            if missing and not self.closed:
+                available = {}
+                for row in [*self._archive_context, *self.msgs]:
+                    a = row.get("attachment") or {}
+                    key = (row.get("id"), a.get("file"))
+                    if key in missing and a.get("caption"):
+                        available[key] = a["caption"]
+                if missing.keys() - available.keys():
+                    for row in self.history_archive.messages:
+                        a = row.get("attachment") or {}
+                        key = (row.get("id"), a.get("file"))
+                        if key in missing and a.get("caption"):
+                            available.setdefault(key, a["caption"])
+                for key, caption in available.items():
+                    missing[key]["caption"] = caption
 
     def _miss(self) -> None:
         """这次没接（判断不接，或者她自己不想回）：接话窗口里连着两次就悄悄退出"""
@@ -1140,6 +1209,7 @@ class GroupChat:
             self._round_remember = remember
             return await self._turn(mode, focus, extra, bg, to, farewell=mode == "farewell", judged=judged)
 
+    @request_model(lambda self, mode, *args, **kwargs: "catchup" if mode == "catchup" else "farewell" if mode == "farewell" else "group_reply")
     async def _turn(self, mode: str, focus: list[str], extra: str | None, bg: dict | None, to: str,
                     farewell: bool = False, judged: list | None = None) -> bool:
         """farewell：这轮带着道别（真发出去了才记「这一段道过别」）；judged：这一轮判断时才翻到的（被打断时也算翻过去）"""
@@ -1247,6 +1317,7 @@ class GroupChat:
             winext.opener_note(her_texts), winext.time_block(now, group=True),
             activity.current_context(now, state_fn=state_at, allow_query=use_tools),
             activity.messages_query(focus_msgs, now, state_fn=state_at) if not use_tools else None,
+            identity.messages_query(focus_msgs, private=False) if not use_tools else None,
             self._context_instruction(), extra,
         ] if s)
         # 问模型前最后看一眼（查背景、挑样例的这阵子）：撤回了她要接的 → 打断；撤回了别的 → 拿掉；她下线了 → 叫她的记成留言
@@ -1454,6 +1525,9 @@ class GroupChat:
         """群里一轮回传给她的工具结果"""
         name = c["name"]
         if name == "recall":
+            identity_result = identity.call_result(c, private=False)
+            if identity_result is not None:
+                return identity_result
             schedule_result = activity.call_result(c, now_ms(), state_fn=state_at)
             if schedule_result is not None:
                 return schedule_result
@@ -1680,9 +1754,7 @@ class GroupChat:
         if self._history_timer is not None:
             self._history_timer.cancel()
             self._history_timer = None
-        llm = self.llm
         if (self.closed or self.mem_busy or not getattr(self.hub, "round_llm_for", None)
-                or llm is None or llm.provider() is None
                 or (self._history_task is not None and not self._history_task.done())):
             return
         due = self.round_memory.next_summary_at()
@@ -1695,6 +1767,7 @@ class GroupChat:
             self._history_timer = asyncio.get_running_loop().call_later(
                 (due - now_ms()) / 1000, self.schedule_history)
 
+    @request_model("summary")
     async def run_history(self) -> bool:
         """连续交谈封口后写一次第一人称记事；新话继续进入下一个片段。"""
         llm = self.llm
@@ -1707,11 +1780,17 @@ class GroupChat:
             if not result.ok:
                 self.hub.events.count("模型失败")
             return result
+        async def prepare(rows, image_ids):
+            if not llm.supports("image"):
+                # 只转述这轮实际看过的图片；不能把其它存盘图片伪装成已读。
+                await self._see_images([row for row in rows if row["id"] in image_ids],
+                                       now_ms() + WAIT_MS, force_text=True)
+            return not self.closed and not self.mem_busy
         changed = False
         completed = False
         try:
             while not self.closed and not self.mem_busy and self.round_memory.needs_summary():
-                if not await self.round_memory.summarize(chat, vision=llm.supports("image")):
+                if not await self.round_memory.summarize(chat, vision=llm.supports("image"), prepare=prepare):
                     break
                 changed = True
             completed = True
@@ -1775,12 +1854,8 @@ class GroupChat:
         self._sync_round_segment()
         if state_at(now).online and not force:
             return None  # 在线期间只作每轮记事；不因消息/包超过某个数量重复整理长期记忆。
-        if not self.llm.supports("tool_use"):
-            return None
         if not self.memory.enabled() and not force:
             return None
-        if force:
-            self._archive_action(self.round_memory.seal_open)
         hist = self.memory_session()
         session = self.memory.pending_session(hist, state_at(now).online and not force, now) \
             if (force or self.memory.can_try(now)) else None
@@ -1788,9 +1863,21 @@ class GroupChat:
         tags = not session and not haze and (force or self.memory.can_try_tags(now)) and bool(self.memory.pending_tags())
         if not session and not haze and not tags:
             return "没有要整理的"
+        purpose = "memory" if session else "memory_haze" if haze else "memory_tags"
+        with model_scope(purpose):
+            if self.llm.provider() is None or (purpose != "memory_haze" and not self.llm.supports("tool_use")):
+                return None
+            return await self._run_memory_selected(session, haze, now, force)
+
+    async def _run_memory_selected(self, session, haze, now, force) -> str | None:
+        if force:
+            self._archive_action(self.round_memory.seal_open)
         self.mem_busy = True
         try:
             if session:
+                await self._see_images(self.round_memory.memory_raw_messages(session), now_ms() + WAIT_MS, force_text=True)
+                if self.closed:
+                    return None
                 closeness = await self.memory.consolidate_peer(self._mem_chat, session, now, f"群「{self.name}」里", self.hub.trailblazer,
                                                                self.hub.intimacy.roster_line,
                                                                summary_dialogue=self.round_memory.memory_note(session), allow_read_only=True)

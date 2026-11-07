@@ -27,6 +27,18 @@ const bridge = createBridge(host);
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+function setupUniverseLink() {
+  const link = $("memory-universe-link");
+  const path = host?.pageUrls?.["memory-universe"];
+  if (!link || typeof path !== "string" || !window.location?.href) return;
+  try {
+    const url = new URL(path, window.location.href);
+    if (!/^https?:$/.test(url.protocol) || url.origin !== window.location.origin) return;
+    link.href = url.href;
+    link.hidden = false;
+  } catch { /* A host without this page keeps the optional navigation hidden. */ }
+}
+
 const COLORS = { night: "var(--night)", downtime: "var(--idle)", duty: "var(--day)", mission: "var(--mission)", sleep: "var(--rest)", offline: "var(--line)", offline_mission: "var(--mission-offline)", offline_rest: "var(--rest-offline)" };
 const NAMES = { night: "夜里在线", downtime: "空下来在线", duty: "白天有事时在线", mission: "💬 忙碌时在线", sleep: "休息时在线", offline: "不在线", offline_mission: "⏳ 忙碌中（不在线）", offline_rest: "🌙 休息中（不在线）" };
 
@@ -623,6 +635,7 @@ $("reload-data").addEventListener("click", async () => {
 if (host) {
   try {
     await bridge.ready();
+    setupUniverseLink();
     await loadAll();
     setInterval(loadOverview, 30_000);
   } catch (error) {

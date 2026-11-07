@@ -507,7 +507,7 @@ class RoundMemory:
             out.extend([{"type": "text", "text": "这一轮实际看过的附图，对应：" + _excerpt_line(row, 180)}, block])
         return out
 
-    async def summarize(self, chat, vision=False) -> bool:
+    async def summarize(self, chat, vision=False, prepare=None) -> bool:
         if chat is None or not self.needs_summary():
             return False
         async with self._lock:
@@ -516,6 +516,12 @@ class RoundMemory:
                 return False
             self._freeze(record, now_ms())
             rows = self._rows_for(record)
+            if prepare is not None:
+                if await prepare(rows, set(record.get("imageIds") or [])) is False:
+                    return False
+                if record["state"] != "queued":
+                    return False  # 等图期间已整理或丢弃，不再为过时的轮包调用模型。
+                rows = self._rows_for(record)  # 转述保存到原档案后再固定本次摘要输入。
             if not rows:
                 record["state"] = "skipped"
                 self._dirty = True
@@ -783,8 +789,8 @@ class RoundMemory:
         per_line = max(1, (MAX_UNPACK_CHARS - len(header) - len(rows)) // len(rows))
         return (header + "\n".join(_excerpt_line(row, per_line, query) for row in rows))[:MAX_UNPACK_CHARS]
 
-    def memory_note(self, session: list[dict]) -> str:
-        """长期整理读本批全部轮包；索引仍对应原 session，跨批包用原话。"""
+    def _memory_selection(self, session: list[dict]):
+        """展示和图片准备使用同一份选择，完整轮包替代的原话不再做转述。"""
         positions = {row.get("id"): i for i, row in enumerate(session)}
         chosen, covered = {}, set()
         for record in self._records:
@@ -795,6 +801,15 @@ class RoundMemory:
             indices = sorted(positions[key] for key in ids)
             chosen[indices[0]] = (record, indices)
             covered.update(ids)
+        return chosen, covered
+
+    def memory_raw_messages(self, session: list[dict]) -> list[dict]:
+        _, covered = self._memory_selection(session)
+        return [row for row in session if row.get("id") not in covered]
+
+    def memory_note(self, session: list[dict]) -> str:
+        """长期整理读本批全部轮包；索引仍对应原 session，跨批包用原话。"""
+        chosen, covered = self._memory_selection(session)
         if not chosen:
             return ""
         lines = ["这些轮记事不是逐字原话；编号仍是原对话的位置。不能把记事改写成自己或对方的原话。",

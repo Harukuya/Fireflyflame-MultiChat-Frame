@@ -8,6 +8,8 @@
 
 本地服务只提供固定页面资源及 `DashboardService` 的管理接口；`local.js` 自动建立 `window.MultiChatPage` 桥。每次启动的临时管理令牌由服务注入页面，API 请求携带令牌，并校验 Host／Origin；令牌不放 URL 或日志，也不是模型 API Key。没有 CORS 放行。不要将这一入口直接转发到公网。
 
+主面板的“思想宇宙”进入独立 `/memory-universe/` 页面，查看当前仍保存的记忆星图、时间线和详情。它使用同一监听与鉴权，不另外开放数据端口；只读浏览不调用模型、不运行整理／遗忘结算，也不改变回想次数。源码位于 `pages/memory-universe/`，正式模式连接当前 Runtime；预览模式必须明确标示虚构示例。
+
 ## 嵌入已有宿主
 
 把 `dashboard.enabled` 设为 `false` 后，本地监听关闭，页面仍可嵌入宿主管理界面。由宿主在加载 `app.js` 前提供 `window.MultiChatPage`。如果没有提供，则兼容已有的 `window.AstrBotPluginPage`。直接打开静态文件而没有桥接对象时只显示接入说明，不发网络请求、不启动轮询。
@@ -16,6 +18,8 @@
 
 ```js
 window.MultiChatPage = {
+  // 可选：由宿主提供同源页面地址；未提供时隐藏跨页导航。
+  pageUrls: { dashboard: '/manage/', 'memory-universe': '/manage/memory-universe/' },
   async ready() { /* 可选，等待宿主准备好 */ },
   async request({ method, path, params, body }) {
     // GET 使用 params，POST 使用 body。
@@ -35,6 +39,9 @@ window.MultiChatPage = {
 | GET | `intimacy` | 无 |
 | GET | `memory` | 可选 `scope` |
 | GET | `sticker` | 无 |
+| GET | `memory-universe/meta` | 无；返回来源、类型及只读能力 |
+| GET | `memory-universe/items` | 可选 `scope/kinds/q/topicId/personId/from/to/includeUndated/limit/cursor` |
+| GET | `memory-universe/item` | `id`：列表返回的不透明节点 ID |
 | POST | `sessions/add` | `kind`、`id` |
 | POST | `sessions/update` | `kind`、`id`、`field`、`value` |
 | POST | `sessions/remove` | `kind`、`id` |
@@ -53,6 +60,10 @@ result = await dashboard.handle(method, path, params=query, body=json_body)
 ```
 
 成功统一返回 `{"ok": true, ...视图字段}`，例如会话列表是 `{"ok": true, "rows": [...], "whitelist": false}`。操作成功但无额外数据时是 `{"ok": true}`。失败统一返回 `{"ok": false, "error": {"code": "busy", "message": "当前有会话任务正在运行，请稍后重试"}}`。前端会把错误显示为提示，避免误报成功；不要再套一层 `data`。
+
+思想宇宙的三个新增只读接口有独立版本包：成功为 `{"ok":true,"schemaVersion":1,"generatedAt":毫秒,"utcOffsetMinutes":时区偏移,"data":...}`，失败为 `{"ok":false,"schemaVersion":1,"error":{"code":...,"message":...,"retryable":布尔值}}`。宿主应原样传回，不丢掉时间和版本字段，也不再包一层 `data`。业务错误走成功的 HTTP 传输以保留错误码，HTTP 鉴权／路由／网络拒绝仍是宿主错误。列表的游标绑定同一筛选与数据版本，近7／30天筛选在翻页期间固定；`STALE_CURSOR` 刷新首屏，不保留被删除的旧快照。
+
+新页资产都在 `pages/memory-universe/` 内，嵌入宿主时同样应在脚本前注入页面桥。不要通过 `../dashboard/` 跨页载入资源；`pageUrls` 只提供界面跳转，同源 HTTP(S) 地址才会显示。平台 SDK、角色提示、配置和运行目录不能作为静态文件提供给浏览器。
 
 接口数据形状沿用 `multichat/dashboard.py` 视图函数。`overview.her.name` 是角色显示名；`sessions.note` 可以覆盖默认会话权限说明。通用账号 ID 允许非数字文本，平台适配器负责最终校验、鉴权和命名空间隔离。亲密度记录的 `qq` 字段为兼容现有存档仍保留此技术名称，界面显示为账号 ID。
 
