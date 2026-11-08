@@ -31,6 +31,20 @@ check("小伴" in persona.build_system_prompt(), "identity assembled")
 check("本轮要回应" in persona.FORMAT and all("如果对方的话虽然多，但内容比较空、重复或只是随口闲聊，你也少说一点，简单接住就好。" in text
       for text in (persona.FORMAT, persona.build_return_context(100, "休息"), winext.group_block("测试群", ""), winext.group_catchup_context("休息"))),
       "relative reply length follows substance; empty or repetitive talk gets a brief response")
+FEWER = "**说得少，是少说几件事、少发几条，不是把每句话削短。**每句话该有的语气和衔接要留着。"
+check(FEWER in persona.FORMAT and FEWER in persona.build_system_prompt()
+      and persona.FORMAT.index("每条单独占一行。**") < persona.FORMAT.index(FEWER) < persona.FORMAT.index("只看本轮要回应的内容"),
+      "saying less means fewer messages, not clipped sentences")
+special = [persona.build_standalone_farewell_context(7.5), persona.build_recheck_context("", True, False, "5分钟", "a", 40),
+           persona.build_recheck_context("话题", False, False, "5分钟", "a", 20), persona.build_recheck_context("话题", False, True, "刚才", "a", 0.3),
+           persona.build_proactive_context("a", True, 60.4, True), persona.build_proactive_context("b", False, 9, False)]
+check(all("话不多" in t and "说完整" in t and not any(x in t for x in ("条，短。", "条，短：", "条，短，")) for t in special)
+      and "只说 1～2 条" in special[0] and all("只说 1～3 条" in t for t in special[4:]),
+      "special cases keep message caps but ask for complete sentences instead of bare 'short'")
+from multichat import farewell as fw
+follow = fw.followup_system("测试身份", now=stamp(10))
+check("一两句话即可；话不多，但每句说完整。" in follow and "简短的聊天消息" not in follow and "不要展开新话题" in follow,
+      "final follow-up stays one message but complete")
 check("想做的事" in persona.build_system_prompt(channel="tools"), "tool protocol")
 check("第一次交流" in persona.build_first_contact_context(), "first contact no invented relation")
 check(not schedule.state_at(stamp(7, 59)).online, "before online")
