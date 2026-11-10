@@ -109,7 +109,7 @@ def round_feeling(ways: list[dict] | None = None, way_note: str | None = None) -
         props["way"] = {
             "type": "string",
             "enum": [w["label"] for w in ways],
-            "description": way_note or f"这轮你是怎么回他的：{listed}。不必每次都照常回复，看你想怎么接；别连着几轮都在问他、向他要东西。",
+            "description": way_note or f"这轮你是怎么回他的：{listed}。不必每次都照常回复，看你想怎么回；别连着几轮都在问他、向他要东西。",
         }
     return {
         "name": "round_feeling",

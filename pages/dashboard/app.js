@@ -430,7 +430,7 @@ function renderSessions(d) {
       <td>${r.kind === "group" ? "群 · " : "私聊 · "}${esc(r.name)}</td>
       <td class="muted">${esc(r.id)}</td>
       <td>${sw(r, "enabled")}</td>
-      <td>${r.kind === "group" ? sw(r, "proactive") : `<span class="muted">—</span>`}</td>
+      <td>${r.kind === "group" || r.trailblazer ? sw(r, "proactive") : `<span class="muted">—</span>`}</td>
       <td>${sw(r, "memory")}</td>
       <td class="muted">${esc(r.last || "")}${r.kind === "group" ? `<br>本群看手机 ${esc(r.lookCount ?? 0)}/${esc(r.lookMax ?? 2)} 次（当前时段）` : ""}${r.lastLook ? `<br>上次看 ${esc(r.lastLook)}` : ""}${r.history ? `<br>原文档案 ${esc(r.history.messages)} 条` : ""}${r.rounds ? `<br>${roundStatus(r.rounds)}${r.summaryModel ? `<br>记事模型 ${esc(r.summaryModel)}` : ""}` : ""}</td>
       <td class="row-actions"><button class="small ghost" data-remove="${esc(r.kind)}:${esc(r.id)}">拿掉</button></td>

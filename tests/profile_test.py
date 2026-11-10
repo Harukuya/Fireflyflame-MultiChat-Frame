@@ -28,7 +28,7 @@ profile.configure({}, ROOT / "prompts")
 check(profile.bot_name() == "小伴", "default name")
 check(profile.primary_name() == "主要联系人", "default primary label")
 check("小伴" in persona.build_system_prompt(), "identity assembled")
-check("本轮要回应" in persona.FORMAT and all("如果对方的话虽然多，但内容比较空、重复或只是随口闲聊，你也少说一点，简单接住就好。" in text
+check("本轮要回应" in persona.FORMAT and all("如果对方的话虽然多，但内容比较空、重复或只是随口闲聊，你也少说一点，简单回一两句就好。" in text
       for text in (persona.FORMAT, persona.build_return_context(100, "休息"), winext.group_block("测试群", ""), winext.group_catchup_context("休息"))),
       "relative reply length follows substance; empty or repetitive talk gets a brief response")
 FEWER = "**说得少，是少说几件事、少发几条，不是把每句话削短。**每句话该有的语气和衔接要留着。"
@@ -45,6 +45,26 @@ from multichat import farewell as fw
 follow = fw.followup_system("测试身份", now=stamp(10))
 check("一两句话即可；话不多，但每句说完整。" in follow and "简短的聊天消息" not in follow and "不要展开新话题" in follow,
       "final follow-up stays one message but complete")
+# 程序生成的提示词不用「接住／接话」这类说法，免得角色学成口头禅（只换措辞，规则不变）。
+# prompts/voice.md 是维护者自己写的口吻，原样保留，这里把它从拼好的提示里去掉再查。
+from multichat import mood as md, tools as tl, ways as wy
+BANNED = ("接住", "接话", "想怎么接", "想接的接", "怎么接的", "要接的那个人")
+own = lambda text: text.replace(persona.VOICE, "")  # noqa: E731
+wording = {
+    "system": own(persona.build_system_prompt()), "group": winext.group_block("测试群", "") + own(persona.build_system_prompt()),
+    "catchup": persona.build_return_context(100, "休息"), "group catchup": winext.group_catchup_context("休息"),
+    "tired": persona.build_state_context("平稳", "tired-first"), "mood": md.mood_instruction(80), "follow-up": own(follow),
+    "private way": tl.round_feeling(wy.WAYS)["input_schema"]["properties"]["way"]["description"],
+    "group way": tl.round_feeling(wy.GROUP_WAYS, wy.group_way_note(wy.GROUP_WAYS))["input_schema"]["properties"]["way"]["description"],
+    "group no_reply": winext.no_reply_tool(True, group=True)["description"], "default voice": profile._DEFAULTS["voice"],
+}
+check(all(not any(w in text for w in BANNED) for text in wording.values()), "prompts and tool notes avoid 接住/接话 wording")
+check("挑要紧的简单回几句就好" in wording["tired"] and "自然地聊" in wording["mood"] and "先温和地回应他" in follow
+      and "照常回复 = 顺着他的话" in wording["private way"] and wording["group way"].startswith("这轮你是怎么回的")
+      and "结束这段群聊；仅这一句不用回" in wording["group no_reply"] and "挑你想回的回" in wording["group"]
+      and "认真回应对方正在说的事" in wording["default voice"], "replacement wording in place")
+check([w["label"] for w in wy.WAYS] == ["照常回复", "追问", "分享", "索取", "逗他", "收着", "岔开"]
+      and wy.GROUP_WAYS[3]["desc"] == "接个梗、开个玩笑，或者适度模仿熟悉人物的语气", "way options unchanged apart from wording")
 check("想做的事" in persona.build_system_prompt(channel="tools"), "tool protocol")
 check("第一次交流" in persona.build_first_contact_context(), "first contact no invented relation")
 check(not schedule.state_at(stamp(7, 59)).online, "before online")

@@ -157,8 +157,9 @@ class DashboardService:
                 raise DashboardAPIError("invalid_field", "不支持修改这个会话项目")
             if (field == "name" and (not isinstance(value, str) or len(value) > 200)) or (field != "name" and not isinstance(value, bool)):
                 raise DashboardAPIError("invalid_value", "名字需为 200 字以内文本，开关需为 true/false")
-            if kind == "private" and field == "proactive":
-                raise DashboardAPIError("invalid_field", "主动看群开关只适用于群聊")
+            if kind == "private" and field == "proactive" and sid != p.trailblazer:
+                # 私聊的 proactive 只控制主要联系人的独立主动联系；念头、追问不受影响
+                raise DashboardAPIError("invalid_field", "私聊只有主要联系人可以开关独立主动联系")
             if await p.update_session(kind, sid, field, value) is False:
                 raise DashboardAPIError("not_found", "会话或项目不存在")
             return {}

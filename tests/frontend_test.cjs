@@ -26,11 +26,23 @@ let stickerResponse = {dir:'SYNTHETIC_DATA/stickers',library:{'开心':[]}};
 const bridge = {ready:async()=>{},apiGet:async (route) => { requested.push(route); switch(route) {case 'overview':return overview;case 'sessions':return {whitelist:false,rows:[]};case 'intimacy':return {rows:[]};case 'memory':return {scope:'',scopes:[],empty:true};case 'sticker':return stickerResponse;default:throw Error(route);}},apiPost:async route=>{throw Error('Unexpected write ' + route);}};
 const context = vm.createContext({window:{AstrBotPluginPage:bridge,addEventListener(){},innerWidth:900,innerHeight:800},document:{getElementById:$,addEventListener(){},activeElement:null},console,setInterval(){},setTimeout(){},clearTimeout(){},confirm(){return true;}});
 (async()=>{
-  await vm.runInContext('(async()=>{' + app + '\nreturn {renderOverview,renderSessions,renderMemory};})()',context);
+  const ui = await vm.runInContext('(async()=>{' + app + '\nreturn {renderOverview,renderSessions,renderMemory};})()',context);
   test('全脚本初始化只请求可用接口，无点赞字段也不报错',()=>assert.deepEqual(requested.sort(),['intimacy','memory','overview','sessions']));
   test('HTML和JS没有点赞UI或请求残留',()=>assert.doesNotMatch(html+app,/点赞|likes\/|data-like=|like-now/));
   test('页面名称正确且主要联系人由空配置开始',()=>{assert.match(html,/<h1>MultiChat 多会话框架<\/h1>/);const config=JSON.parse(fs.readFileSync(path.join(plugin,'config.example.json'),'utf8'));assert.equal(config.primary_user_id,'');assert.equal($('character-heading').textContent,'<测试角色>现在');});
   test('空会话有指引',()=>assert.match($('sessions').querySelector('tbody').innerHTML,/还没有受管会话/));
+  test('主要联系人私聊行显示独立主动联系开关，普通私聊仍为—',()=>{
+    assert.match(html,/<th title="群：主动看消息、接着聊；主要联系人私聊：安静一阵后独立主动联系（念头、追问不受影响）">主动<\/th>/);
+    ui.renderSessions({whitelist:false,rows:[
+      {kind:'private',id:'reader:main',name:'主要联系人',trailblazer:true,enabled:true,memory:true,proactive:false,last:''},
+      {kind:'private',id:'reader:other',name:'读者',trailblazer:false,enabled:true,memory:true,proactive:null,last:''},
+      {kind:'group',id:'room:a',name:'房间',enabled:true,memory:true,proactive:true,last:''}]});
+    const rows=$('sessions').querySelector('tbody').innerHTML.split('<tr>').slice(1);
+    assert.match(rows[0],/data-kind="private" data-id="reader:main" data-field="proactive"  >/);
+    assert.doesNotMatch(rows[1],/data-field="proactive"/);assert.match(rows[1],/—/);
+    assert.match(rows[2],/data-kind="group" data-id="room:a" data-field="proactive" checked/);
+  });
+  ui.renderSessions({whitelist:false,rows:[]});
   test('空记忆展示说明并禁用整理',()=>{assert.match($('mem-note').textContent,/还没有受管会话/);assert.equal($('mem-run').disabled,true);});
   test('空表情提示且总览展示实际路径',()=>{assert.match($('sticker-count').textContent,/还没有表情图片/);assert.match($('sticker-dir').textContent,/SYNTHETIC_DATA\/stickers/);});
   await $('load-stickers').listeners.click();

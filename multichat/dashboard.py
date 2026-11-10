@@ -267,6 +267,7 @@ def sessions_view(p) -> list[dict]:
         last = next((m for m in reversed(st.messages) if not m.get("system")), None) if st else None
         rows.append({"kind": "private", "id": qq, "name": d.get("name") or (primary_name() if qq == p.trailblazer else qq),
                      "trailblazer": qq == p.trailblazer, "enabled": d.get("enabled", True), "memory": d.get("memory", False),
+                     "proactive": bool(d.get("proactive", False)) if qq == p.trailblazer else None,
                      "last": _ts(last["ts"]) if last else ""})
     for gid, d in s.group.items():
         if not d.get("listed"):

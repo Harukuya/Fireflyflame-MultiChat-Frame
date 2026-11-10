@@ -63,6 +63,7 @@ async def main():
     x=await api.handle('POST','sessions/add',body={'kind':'private','id':'@reader:example.org'});check('add generic ID',x['ok'] and p.sessions.private_on('@reader:example.org'))
     x=await api.handle('POST','sessions/update',body={'kind':'private','id':'@reader:example.org','field':'enabled','value':'false'});check('reject string boolean',x['error']['code']=='invalid_value')
     x=await api.handle('POST','sessions/update',body={'kind':'private','id':'@reader:example.org','field':'name','value':'读者'});check('rename session',x['ok'] and p.sessions.private['@reader:example.org']['name']=='读者')
+    x=await api.handle('POST','sessions/update',body={'kind':'private','id':'@reader:example.org','field':'proactive','value':True});check('non-primary private cannot toggle outreach',x['error']['code']=='invalid_field' and not p.sessions.private['@reader:example.org'].get('proactive'))
     p.trailblazer='@reader:example.org'
     memory_task=asyncio.create_task(api.handle('POST','memory/run',body={'scope':scope}))
     while not pending:await asyncio.sleep(0)
@@ -96,6 +97,12 @@ async def actual_runtime():
         for kind,sid in [('private','reader:main'),('group','room:example')]:
             x=await api.handle('POST','sessions/add',body={'kind':kind,'id':sid,'memory':True});check('real register '+kind,x['ok'])
         x=await api.handle('GET','sessions');check('real sessions views available',x['ok'] and len(x['rows'])==2)
+        primary=lambda rows:next(r for r in rows if r['kind']=='private')
+        check('primary row exposes outreach switch, framework default off',primary(x['rows'])['trailblazer'] and primary(x['rows'])['proactive'] is False and not runtime.engine('reader:main')._proactive_on())
+        x=await api.handle('POST','sessions/update',body={'kind':'private','id':'reader:main','field':'proactive','value':True})
+        check('dashboard turns on primary outreach gate',x['ok'] and runtime.engine('reader:main')._proactive_on() and primary((await api.handle('GET','sessions'))['rows'])['proactive'] is True)
+        x=await api.handle('POST','sessions/update',body={'kind':'private','id':'reader:main','field':'proactive','value':False})
+        check('dashboard turns off primary outreach gate',x['ok'] and not runtime.engine('reader:main')._proactive_on())
         x=await api.handle('GET','memory',params={'scope':'g:room:example'});check('real group memory view',x['ok'] and x['scope']=='g:room:example' and x['pending']==0)
         x=await api.handle('POST','memory/run',body={'scope':'p:reader:main'});check('real memory task no model call for empty history',x['ok'] and not provider.requests)
         old=runtime.engine('reader:main')

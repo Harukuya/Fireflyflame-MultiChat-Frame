@@ -19,7 +19,7 @@ from .jsutil import MIN, now_ms
 
 # 七种方式：叫法（工具参数里用中文，她读得最顺）和一句说明——原文
 WAYS = [
-    {"id": "normal", "label": "照常回复", "desc": "接住他的话，说你的看法"},
+    {"id": "normal", "label": "照常回复", "desc": "顺着他的话，说你的看法"},
     {"id": "ask", "label": "追问", "desc": "当场问你想知道的"},
     {"id": "share", "label": "分享", "desc": "说说你自己这边的事、你想到的"},
     {"id": "want", "label": "索取", "desc": "向他要点什么：想听他多说说、想要他的看法、想让他陪你一会儿，或者想被他在乎、撒个娇"},
@@ -30,7 +30,7 @@ WAYS = [
 
 # 群里（这边定的）：不索取；说法换成对着大家
 GROUP_WAYS = [
-    {"id": "normal", "label": "照常回复", "desc": "接住大家的话，说你的看法"},
+    {"id": "normal", "label": "照常回复", "desc": "顺着大家的话，说你的看法"},
     {"id": "ask", "label": "追问", "desc": "当场问你想知道的"},
     {"id": "share", "label": "分享", "desc": "说说你自己这边的事、你想到的"},
     {"id": "tease", "label": "开玩笑", "desc": "接个梗、开个玩笑，或者适度模仿熟悉人物的语气"},
@@ -41,7 +41,7 @@ GROUP_WAYS = [
 
 def group_way_note(ways: list[dict]) -> str:
     listed = "；".join(f"{w['label']} = {w['desc']}" for w in ways)
-    return f"这轮你是怎么接的：{listed}。不必每次都照常回复，看你想怎么接；别连着几轮都在问别人。"
+    return f"这轮你是怎么回的：{listed}。不必每次都照常回复，看你想怎么回；别连着几轮都在问别人。"
 
 
 def available_ways(mood_value: float) -> list[dict]:
